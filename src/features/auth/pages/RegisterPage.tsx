@@ -76,6 +76,12 @@ export function RegisterPage() {
         </Button>
       </form>
 
+      <p className="text-sm text-slate-700">
+        Ja tens un compte?{" "}
+        <Link className="underline" to="/login">
+          Iniciar sessió
+        </Link>
+      </p>
       <Link className="text-sm text-slate-700 underline" to="/">
         Tornar a l&apos;inici
       </Link>
