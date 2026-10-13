@@ -4,6 +4,7 @@ import {
   assertValidEmail,
   assertValidName,
   assertValidPassword,
+  getPasswordChecks,
 } from "./validation";
 
 function expectConvexError(
@@ -46,12 +47,43 @@ describe("assertValidEmail", () => {
   });
 });
 
+describe("getPasswordChecks", () => {
+  it("reports each requirement separately", () => {
+    expect(getPasswordChecks("abc")).toEqual({
+      minLength: false,
+      uppercase: false,
+      number: false,
+      symbol: false,
+    });
+    expect(getPasswordChecks("Àbcdefg1!")).toEqual({
+      minLength: true,
+      uppercase: true,
+      number: true,
+      symbol: true,
+    });
+  });
+
+  it("does not count spaces as symbols", () => {
+    expect(getPasswordChecks("Abcdefg1 ").symbol).toBe(false);
+  });
+});
+
 describe("assertValidPassword", () => {
-  it("accepts passwords with 8+ characters", () => {
-    expect(() => assertValidPassword("password")).not.toThrow();
+  it("accepts strong passwords", () => {
+    expect(() => assertValidPassword("Password1!")).not.toThrow();
   });
 
   it("rejects short passwords", () => {
-    expectConvexError(() => assertValidPassword("short"), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword("Pa1!"), "INVALID_PASSWORD");
+  });
+
+  it("rejects passwords without uppercase, number or symbol", () => {
+    expectConvexError(() => assertValidPassword("password1!"), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword("Password!!"), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword("Password12"), "INVALID_PASSWORD");
+  });
+
+  it("rejects non-string passwords", () => {
+    expectConvexError(() => assertValidPassword(undefined), "INVALID_PASSWORD");
   });
 });

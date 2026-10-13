@@ -1,42 +1,27 @@
-import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
-import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
-import { Button } from "../../../components/ui/Button";
+import { BottomNav } from "../../../components/layout/BottomNav";
+import { FullPageSpinner } from "../../../components/ui/Spinner";
+import { BalanceCard } from "../components/BalanceCard";
+import { HomeHeader } from "../components/HomeHeader";
+import { RecentTransactions } from "../components/RecentTransactions";
 
-/** Temporary home shell to verify auth redirect, session reload, and logout. */
+/** Main menu shown after signing in (US1.2 AC1). Protected by RequireAuth. */
 export function HomePage() {
   const user = useQuery(api.users.currentUser);
-  const { signOut } = useAuthActions();
+
+  if (!user) {
+    return <FullPageSpinner />;
+  }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-4 p-6">
-      <h1 className="text-2xl font-semibold">M-Manager</h1>
-      {user === undefined ? (
-        <p>Carregant…</p>
-      ) : user === null ? (
-        <>
-          <p>No has iniciat sessió.</p>
-          <div className="flex flex-col gap-2">
-            <Link className="text-slate-900 underline" to="/login">
-              Iniciar sessió
-            </Link>
-            <Link className="text-slate-900 underline" to="/register">
-              Crear un compte
-            </Link>
-          </div>
-        </>
-      ) : (
-        <>
-          <p>
-            Benvingut/da, <strong>{user.name || user.email}</strong>.
-          </p>
-          <p className="text-sm text-slate-600">{user.email}</p>
-          <Button type="button" onClick={() => void signOut()}>
-            Tancar sessió
-          </Button>
-        </>
-      )}
-    </main>
+    <div className="min-h-screen bg-surface">
+      <main className="mx-auto flex max-w-md flex-col gap-6 px-5 pt-8 pb-28">
+        <HomeHeader name={user.name} />
+        <BalanceCard />
+        <RecentTransactions />
+      </main>
+      <BottomNav />
+    </div>
   );
 }
