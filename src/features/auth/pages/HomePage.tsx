@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "../../../components/ui/Button";
 
-/** Temporary home shell so registration redirect can be verified. */
+/** Temporary home shell to verify auth redirect, session reload, and logout. */
 export function HomePage() {
   const user = useQuery(api.users.currentUser);
   const { signOut } = useAuthActions();
@@ -17,9 +17,14 @@ export function HomePage() {
       ) : user === null ? (
         <>
           <p>No has iniciat sessió.</p>
-          <Link className="text-slate-900 underline" to="/register">
-            Crear un compte
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link className="text-slate-900 underline" to="/login">
+              Iniciar sessió
+            </Link>
+            <Link className="text-slate-900 underline" to="/register">
+              Crear un compte
+            </Link>
+          </div>
         </>
       ) : (
         <>
