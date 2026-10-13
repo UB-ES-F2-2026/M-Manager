@@ -13,7 +13,9 @@ Abans de fer res en aquest repositori, **llegeix `README.md` sencer**. Conté l'
 - **Convex:** cada funció pública valida arguments amb `v`, comprova `getAuthUserId(ctx)` i comprova que les dades pertanyen a l'usuari. Filtra amb `.withIndex(...)`.
 - **Estils:** només classes de Tailwind. Cap fitxer CSS nou ni llibreria d'estils.
 - **No** instal·lis dependències ni modifiquis `convex/schema.ts` sense aprovació explícita de l'humà.
-- Canvis petits i centrats en una sola història (USx.x). Escriu tests del que canviïs.
+- **Una tasca = una branca = una pull request.** Treballa només en la tasca del GitHub Project que t'indiqui l'humà. No barregis diverses tasques ni diverses històries en una mateixa branca o PR, encara que siguin de la mateixa història (USx.x).
+- Si l'humà no t'ha dit en quina tasca treballa, pregunta-li-ho abans de començar. Si la tasca depèn d'una altra que encara no està fusionada a `develop`, avisa'l en lloc d'implementar tu l'altra tasca.
+- Escriu tests del que canviïs.
 - Abans d'acabar: `npm run lint`, `npm run typecheck` i `npm run test` han de passar.
 - No facis commits a `main` ni a `develop`, ni pugis fitxers `.env*` (excepte `.env.example`) ni claus.
 - Si una petició contradiu el README, avisa l'humà abans de fer-la.

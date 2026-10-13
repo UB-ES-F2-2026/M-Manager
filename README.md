@@ -272,12 +272,21 @@ feature/US2.1-...    ●──●─●
 |---|---|---|
 | `main` | Versió estable i desplegada. És la de la demo | Només al final de cada sprint, des de `develop` |
 | `develop` | Integració de la feina del sprint | Pull requests revisades |
-| `feature/USx.x-descripcio-curta` | Una branca per història o tasca, creada des de `develop` | — |
+| `feature/USx.x-descripcio-curta` | Una branca per **tasca** del GitHub Project, creada des de `develop` | — |
 | `fix/descripcio-curta` | Arreglar un bug | — |
 
-Exemples: `feature/US2.1-add-transaction`, `fix/negative-savings-color`.
+Exemples: `feature/US2.1-transactions-table`, `feature/US2.1-transaction-form`, `fix/negative-savings-color`.
 
 **Ningú fa push directament a `main` ni a `develop`.** Tot entra per pull request.
+
+### Una tasca, una pull request
+
+Cada tasca del GitHub Project es fa en **la seva pròpia branca i la seva pròpia pull request**. Així cadascú pot treballar de manera independent i les revisions són petites.
+
+- Una història (USx.x) es completa amb **diverses** pull requests, una per tasca. No s'obre una sola PR amb tota la història.
+- Una PR no barreja mai tasques diferents, ni que siguin de la mateixa història o de la mateixa persona.
+- Si la teva tasca depèn d'una altra, espera que l'altra estigui fusionada a `develop` i crea la branca des de `develop` actualitzat. No copiïs ni refacis la feina de l'altra tasca a la teva branca.
+- Si mentre treballes veus que cal una cosa que no és de la teva tasca, crea una tasca nova al GitHub Project en lloc d'afegir-la a la teva PR.
 
 ### Commits
 
@@ -294,7 +303,7 @@ chore: update dependencies
 
 1. Obre-la sempre **cap a `develop`**.
 2. Títol: `[US2.1] Add transaction form`.
-3. A la descripció, posa `Closes #12` (el número de la tasca del GitHub Project) perquè es tanqui sola en fusionar.
+3. A la descripció, posa `Closes #12` (el número de la tasca del GitHub Project) perquè es tanqui sola en fusionar. Cada PR tanca **una sola tasca**.
 4. Si toca la interfície, afegeix una captura de pantalla.
 5. Necessita **almenys una aprovació** d'un company (preferiblement qui fa de QA) i que el CI passi.
 6. Després de fusionar, esborra la branca.
@@ -304,10 +313,10 @@ chore: update dependencies
 ```bash
 git checkout develop
 git pull
-git checkout -b feature/US2.1-add-transaction
+git checkout -b feature/US2.1-transaction-form   # una branca per tasca
 # ... programes i fas commits ...
-git push -u origin feature/US2.1-add-transaction
-# obre la pull request a GitHub cap a develop
+git push -u origin feature/US2.1-transaction-form
+# obre la pull request a GitHub cap a develop (una PR per tasca)
 ```
 
 ---
@@ -353,7 +362,7 @@ El desplegament el gestiona la persona de DevOps. La resta de l'equip no ha de t
 | Eina | Què hi va |
 |---|---|
 | **Trello** | El Product Backlog: només **user stories**, amb descripció (COM A / VULL / PER AIXÍ), criteris d'acceptació, story points, etiqueta d'èpica i el disseny de la pantalla adjunt |
-| **GitHub Projects** | Les **tasques tècniques** que surten de cada user story durant la planificació del sprint. Títol amb el codi de la història: `[US2.1] Create transactions table` |
+| **GitHub Projects** | Les **tasques tècniques** que surten de cada user story durant la planificació del sprint. Títol amb el codi de la història: `[US2.1] Create transactions table`. Cada tasca es resol amb una branca i una pull request pròpies (secció 8) |
 | **`docs/wireframes/`** | Els dissenys de les pantalles, amb el mateix nom que la història: `US2.1-add-transaction.png` |
 
 ---
@@ -373,7 +382,7 @@ Aquesta secció és per a qualsevol IA que treballi en aquest repositori (Claude
 7. Només Tailwind per als estils. No afegeixis llibreries d'estils ni fitxers CSS.
 8. **No instal·lis dependències noves** sense que l'humà ho aprovi explícitament. Si en necessites una, digues quina i per què.
 9. **No modifiquis `schema.ts`** si la tasca no ho requereix. Si cal, avisa'n clarament, perquè afecta tot l'equip.
-10. Fes canvis petits i centrats en la història o tasca que s'està treballant. No refactoritzis codi d'altres funcionalitats pel teu compte.
+10. **Una tasca = una branca = una pull request** (secció 8). Treballa només en la tasca del GitHub Project que t'indiqui l'humà; si no te l'ha dit, pregunta-li-ho abans de començar. No barregis diverses tasques en una mateixa branca o PR, ni implementis una tasca de la qual depens: avisa l'humà. No refactoritzis codi d'altres funcionalitats pel teu compte.
 11. Escriu o actualitza els tests del que canviïs.
 12. Abans de donar la feina per acabada, comprova que `npm run lint`, `npm run typecheck` i `npm run test` passen.
 13. No facis commits a `main` ni a `develop`, ni pugis fitxers `.env*` (excepte `.env.example`) ni claus.
