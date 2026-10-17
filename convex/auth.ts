@@ -3,8 +3,8 @@ import { convexAuth } from "@convex-dev/auth/server";
 import type { DataModel } from "./_generated/dataModel";
 import {
   assertValidEmail,
-  assertValidName,
   assertValidPassword,
+  validateSignUpProfile,
 } from "./lib/validation";
 
 /**
@@ -17,13 +17,14 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     Password<DataModel>({
       profile(params) {
-        const email = assertValidEmail(params.email);
         // Name is only collected on registration; login must not require it.
         if (params.flow === "signUp") {
-          const name = assertValidName(params.name);
-          return { email, name };
+          return validateSignUpProfile({
+            name: params.name,
+            email: params.email,
+          });
         }
-        return { email };
+        return { email: assertValidEmail(params.email) };
       },
       validatePasswordRequirements(password) {
         assertValidPassword(password);

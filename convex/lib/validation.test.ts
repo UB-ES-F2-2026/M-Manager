@@ -4,6 +4,7 @@ import {
   assertValidEmail,
   assertValidName,
   assertValidPassword,
+  validateSignUpProfile,
 } from "./validation";
 
 function expectConvexError(fn: () => unknown, code: string): void {
@@ -29,6 +30,10 @@ describe("assertValidName", () => {
   it("rejects missing name", () => {
     expectConvexError(() => assertValidName(undefined), "INVALID_NAME");
   });
+
+  it("rejects names longer than 20 characters", () => {
+    expectConvexError(() => assertValidName("a".repeat(21)), "INVALID_NAME");
+  });
 });
 
 describe("assertValidEmail", () => {
@@ -41,6 +46,10 @@ describe("assertValidEmail", () => {
     expectConvexError(() => assertValidEmail("a@"), "INVALID_EMAIL");
     expectConvexError(() => assertValidEmail(""), "INVALID_EMAIL");
   });
+
+  it("rejects non-string email", () => {
+    expectConvexError(() => assertValidEmail(null), "INVALID_EMAIL");
+  });
 });
 
 describe("assertValidPassword", () => {
@@ -50,5 +59,32 @@ describe("assertValidPassword", () => {
 
   it("rejects short passwords", () => {
     expectConvexError(() => assertValidPassword("short"), "INVALID_PASSWORD");
+  });
+
+  it("rejects empty or non-string passwords", () => {
+    expectConvexError(() => assertValidPassword(""), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword(undefined), "INVALID_PASSWORD");
+  });
+});
+
+describe("validateSignUpProfile", () => {
+  it("returns normalized name and email together", () => {
+    expect(
+      validateSignUpProfile({
+        name: "  Ana  ",
+        email: "  Ana@Example.COM ",
+      }),
+    ).toEqual({ name: "Ana", email: "ana@example.com" });
+  });
+
+  it("fails if either field is invalid", () => {
+    expectConvexError(
+      () => validateSignUpProfile({ name: "", email: "ok@example.com" }),
+      "INVALID_NAME",
+    );
+    expectConvexError(
+      () => validateSignUpProfile({ name: "Ana", email: "bad" }),
+      "INVALID_EMAIL",
+    );
   });
 });
