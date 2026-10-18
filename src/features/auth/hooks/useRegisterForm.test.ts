@@ -65,7 +65,18 @@ describe("getRegisterErrors", () => {
     });
   });
 
-  it("flags an email that is already registered", () => {
+  it("maps EMAIL_TAKEN from the backend to the email field and alert", () => {
+    const result = getRegisterErrors(
+      new ConvexError({
+        code: "EMAIL_TAKEN",
+        message: EMAIL_TAKEN_MESSAGE,
+      }),
+    );
+    expect(result.fieldErrors).toEqual({ email: EMAIL_TAKEN_MESSAGE });
+    expect(result.alert?.title).toBe(EMAIL_TAKEN_MESSAGE);
+  });
+
+  it("still flags the legacy plain 'already exists' error", () => {
     const result = getRegisterErrors(new Error("Account ana@banco.es already exists"));
     expect(result.fieldErrors).toEqual({ email: EMAIL_TAKEN_MESSAGE });
     expect(result.alert?.title).toBe(EMAIL_TAKEN_MESSAGE);
