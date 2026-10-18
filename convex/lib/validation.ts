@@ -8,16 +8,32 @@ export type AuthErrorCode =
   | "INVALID_NAME"
   | "INVALID_EMAIL"
   | "INVALID_PASSWORD"
-  | "EMAIL_TAKEN";
+  | "EMAIL_TAKEN"
+  | "INVALID_CREDENTIALS";
 
 /** Message shown when sign-up uses an email that already has an account (US1.1 AC2). */
 export const EMAIL_TAKEN_MESSAGE = "Aquest correu ja està registrat";
+
+/**
+ * Generic login failure message (US1.2 AC2).
+ * Deliberately does not say whether the email or the password was wrong.
+ */
+export const INVALID_CREDENTIALS_MESSAGE =
+  "Correu electrònic o contrasenya incorrectes";
 
 /** Throws the structured error the registration form expects for a taken email. */
 export function throwEmailTaken(): never {
   throw new ConvexError({
     code: "EMAIL_TAKEN" satisfies AuthErrorCode,
     message: EMAIL_TAKEN_MESSAGE,
+  });
+}
+
+/** Throws the structured error the login form expects for bad credentials. */
+export function throwInvalidCredentials(): never {
+  throw new ConvexError({
+    code: "INVALID_CREDENTIALS" satisfies AuthErrorCode,
+    message: INVALID_CREDENTIALS_MESSAGE,
   });
 }
 

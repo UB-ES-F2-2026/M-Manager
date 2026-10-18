@@ -5,7 +5,9 @@ import {
   assertValidName,
   assertValidPassword,
   EMAIL_TAKEN_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
   throwEmailTaken,
+  throwInvalidCredentials,
   validateSignUpProfile,
 } from "./validation";
 
@@ -101,6 +103,20 @@ describe("throwEmailTaken", () => {
       const data = (error as ConvexError<{ code: string; message: string }>).data;
       expect(data.code).toBe("EMAIL_TAKEN");
       expect(data.message).toBe(EMAIL_TAKEN_MESSAGE);
+    }
+  });
+});
+
+describe("throwInvalidCredentials", () => {
+  it("throws INVALID_CREDENTIALS with the generic login message", () => {
+    try {
+      throwInvalidCredentials();
+      expect.fail("Expected ConvexError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConvexError);
+      const data = (error as ConvexError<{ code: string; message: string }>).data;
+      expect(data.code).toBe("INVALID_CREDENTIALS");
+      expect(data.message).toBe(INVALID_CREDENTIALS_MESSAGE);
     }
   });
 });

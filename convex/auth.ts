@@ -11,6 +11,7 @@ import {
   assertValidEmail,
   assertValidPassword,
   throwEmailTaken,
+  throwInvalidCredentials,
   validateSignUpProfile,
 } from "./lib/validation";
 
@@ -20,9 +21,12 @@ const PASSWORD_PROVIDER = "password";
  * Email + password auth via Convex Auth.
  *
  * Same behaviour as the built-in Password provider for sign-up / sign-in,
- * plus an explicit EMAIL_TAKEN error when the email already has an account
- * (US1.1 AC2). We use ConvexCredentials so we can await that check before
- * createAccount — Password's profile() is not awaited by the library.
+ * plus structured app errors:
+ * - EMAIL_TAKEN on sign-up when the email already has an account (US1.1 AC2)
+ * - INVALID_CREDENTIALS on sign-in when email/password do not match (US1.2 AC2)
+ *
+ * We use ConvexCredentials so we can await DB checks — Password's profile()
+ * is not awaited by the library.
  *
  * Sign-up:  signIn("password", { name, email, password, flow: "signUp" })
  * Sign-in:  signIn("password", { email, password, flow: "signIn" })
@@ -73,11 +77,19 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           return { userId: created.user._id };
         }
 
-        const retrieved = await retrieveAccount(ctx, {
-          provider: PASSWORD_PROVIDER,
-          account: { id: email, secret },
-        });
-        return { userId: retrieved.user._id };
+        try {
+          const retrieved = await retrieveAccount(ctx, {
+            provider: PASSWORD_PROVIDER,
+            account: { id: email, secret },
+          });
+          return { userId: retrieved.user._id };
+        } catch (error) {
+          // Never reveal whether the email or the password was wrong.
+          if (isAuthCredentialFailure(error)) {
+            throwInvalidCredentials();
+          }
+          throw error;
+        }
       },
       crypto: {
         async hashSecret(password: string) {
@@ -108,4 +120,16 @@ async function passwordAccountExists(
     }
     throw error;
   }
+}
+
+/** Auth library failures that mean “wrong email or password” (or rate limit). */
+function isAuthCredentialFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message === "InvalidAccountId" ||
+    error.message === "InvalidSecret" ||
+    error.message === "TooManyFailedAttempts"
+  );
 }
