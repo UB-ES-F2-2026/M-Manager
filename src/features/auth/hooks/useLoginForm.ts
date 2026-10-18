@@ -1,7 +1,14 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const REQUIRED_FIELD_MESSAGE = "Aquest camp és obligatori";
+
+/** Generic credentials error (AC2): it never says which field is wrong. */
+export const LOGIN_ERROR_ALERT = {
+  title: "Correu electrònic o contrasenya incorrectes",
+  description: "Revisa les teves dades i torna-ho a provar.",
+};
 
 export type LoginFields = {
   email: string;
@@ -9,6 +16,11 @@ export type LoginFields = {
 };
 
 export type LoginFieldErrors = Partial<Record<keyof LoginFields, string>>;
+
+type PasswordSignIn = (
+  provider: "password",
+  params: { email: string; password: string; flow: "signIn" },
+) => Promise<unknown>;
 
 /** Returns an error per empty field (AC3). An empty object means the form is valid. */
 export function validateLoginFields(fields: LoginFields): LoginFieldErrors {
@@ -22,11 +34,27 @@ export function validateLoginFields(fields: LoginFields): LoginFieldErrors {
   return errors;
 }
 
-/** Form state and submit logic for the login screen (US1.2). */
+/** Tries to sign in with Convex Auth. Returns false when the credentials are rejected. */
+export async function attemptLogin(signIn: PasswordSignIn, fields: LoginFields): Promise<boolean> {
+  try {
+    await signIn("password", {
+      email: fields.email.trim(),
+      password: fields.password,
+      flow: "signIn",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Form state, submit logic and redirect for the login screen (US1.2). */
 export function useLoginForm() {
   const { signIn } = useAuthActions();
+  const navigate = useNavigate();
   const [fields, setFields] = useState<LoginFields>({ email: "", password: "" });
   const [errors, setErrors] = useState<LoginFieldErrors>({});
+  const [hasCredentialsError, setHasCredentialsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function setField(name: keyof LoginFields, value: string) {
@@ -40,23 +68,20 @@ export function useLoginForm() {
 
     const validationErrors = validateLoginFields(fields);
     setErrors(validationErrors);
+    setHasCredentialsError(false);
     if (Object.keys(validationErrors).length > 0) {
       return;
     }
 
     setIsSubmitting(true);
-    try {
-      await signIn("password", {
-        email: fields.email.trim(),
-        password: fields.password,
-        flow: "signIn",
-      });
-    } catch {
-      // The generic credentials error and the redirect are handled in #25.
-    } finally {
-      setIsSubmitting(false);
+    if (await attemptLogin(signIn, fields)) {
+      // Successful login goes to the main screen (AC1).
+      navigate("/", { replace: true });
+      return;
     }
+    setHasCredentialsError(true);
+    setIsSubmitting(false);
   }
 
-  return { fields, errors, isSubmitting, setField, handleSubmit };
+  return { fields, errors, hasCredentialsError, isSubmitting, setField, handleSubmit };
 }
