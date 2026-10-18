@@ -6,10 +6,11 @@ import {
   assertValidEmail,
   assertValidName,
   assertValidPassword,
+  EMAIL_TAKEN_MESSAGE,
 } from "../../../../convex/lib/validation";
 
 export const REQUIRED_FIELD_MESSAGE = "Aquest camp és obligatori";
-export const EMAIL_TAKEN_MESSAGE = "Aquest correu ja està registrat";
+export { EMAIL_TAKEN_MESSAGE };
 /** Same limit as MAX_NAME_LENGTH in convex/lib/validation.ts. */
 export const MAX_NAME_LENGTH = 20;
 
@@ -69,14 +70,23 @@ const FIELD_BY_ERROR_CODE: Record<string, keyof RegisterFields> = {
 /** Turns a sign-up error from the backend into messages for the form (AC2, AC3). */
 export function getRegisterErrors(error: unknown): RegisterErrors {
   if (error instanceof ConvexError && isCodedError(error.data)) {
+    if (error.data.code === "EMAIL_TAKEN") {
+      return {
+        fieldErrors: { email: error.data.message },
+        alert: {
+          title: error.data.message,
+          description: "Inicia la sessió o fes servir un altre correu.",
+        },
+      };
+    }
+
     const field = FIELD_BY_ERROR_CODE[error.data.code];
     if (field) {
       return { fieldErrors: { [field]: error.data.message } };
     }
   }
 
-  // Convex Auth throws a plain Error when the account exists. Its text only
-  // reaches the client in development; production gets the generic alert.
+  // Legacy fallback: old Convex Auth plain Error (dev only). Prefer EMAIL_TAKEN.
   if (error instanceof Error && error.message.includes("already exists")) {
     return {
       fieldErrors: { email: EMAIL_TAKEN_MESSAGE },

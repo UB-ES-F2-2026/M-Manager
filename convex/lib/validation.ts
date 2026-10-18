@@ -7,7 +7,19 @@ const MIN_PASSWORD_LENGTH = 8;
 export type AuthErrorCode =
   | "INVALID_NAME"
   | "INVALID_EMAIL"
-  | "INVALID_PASSWORD";
+  | "INVALID_PASSWORD"
+  | "EMAIL_TAKEN";
+
+/** Message shown when sign-up uses an email that already has an account (US1.1 AC2). */
+export const EMAIL_TAKEN_MESSAGE = "Aquest correu ja està registrat";
+
+/** Throws the structured error the registration form expects for a taken email. */
+export function throwEmailTaken(): never {
+  throw new ConvexError({
+    code: "EMAIL_TAKEN" satisfies AuthErrorCode,
+    message: EMAIL_TAKEN_MESSAGE,
+  });
+}
 
 /** Rejects missing/blank names and names longer than MAX_NAME_LENGTH. */
 export function assertValidName(name: unknown): string {

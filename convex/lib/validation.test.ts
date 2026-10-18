@@ -4,6 +4,8 @@ import {
   assertValidEmail,
   assertValidName,
   assertValidPassword,
+  EMAIL_TAKEN_MESSAGE,
+  throwEmailTaken,
   validateSignUpProfile,
 } from "./validation";
 
@@ -86,5 +88,19 @@ describe("validateSignUpProfile", () => {
       () => validateSignUpProfile({ name: "Ana", email: "bad" }),
       "INVALID_EMAIL",
     );
+  });
+});
+
+describe("throwEmailTaken", () => {
+  it("throws EMAIL_TAKEN with the registration message", () => {
+    try {
+      throwEmailTaken();
+      expect.fail("Expected ConvexError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConvexError);
+      const data = (error as ConvexError<{ code: string; message: string }>).data;
+      expect(data.code).toBe("EMAIL_TAKEN");
+      expect(data.message).toBe(EMAIL_TAKEN_MESSAGE);
+    }
   });
 });
