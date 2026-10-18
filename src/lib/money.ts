@@ -6,6 +6,11 @@ export function formatMoney(amountCents: number): string {
   }).format(amountCents / 100);
 }
 
+/** Amount with its sign from `type`: "−42,90 €" for expenses, "+1.850,00 €" for income. */
+export function formatSignedMoney(amountCents: number, type: "expense" | "income"): string {
+  return `${type === "expense" ? "−" : "+"}${formatMoney(amountCents)}`;
+}
+
 /**
  * Parses user input into positive integer cents.
  * Returns null when the text is not a valid amount.
