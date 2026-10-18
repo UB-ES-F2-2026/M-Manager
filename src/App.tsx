@@ -1,8 +1,10 @@
 import { Route, Routes } from "react-router-dom";
+import RegisterPage from "./features/auth/pages/RegisterPage";
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/register" element={<RegisterPage />} />
       <Route
         path="*"
         element={
