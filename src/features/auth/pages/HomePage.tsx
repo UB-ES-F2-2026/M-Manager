@@ -1,34 +1,47 @@
 import { useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
-import BrandLogo from "../components/BrandLogo";
+import BottomNav from "../../../components/layout/BottomNav";
+import AccountList from "../components/AccountList";
+import BalanceCard from "../components/BalanceCard";
+import HomeHeader from "../components/HomeHeader";
+import HomeSection from "../components/HomeSection";
 import SessionLoading from "../components/SessionLoading";
-import SignOutButton from "../components/SignOutButton";
+import TransactionList from "../components/TransactionList";
+import {
+  SAMPLE_ACCOUNTS,
+  SAMPLE_TOTAL_BALANCE_CENTS,
+  SAMPLE_TRANSACTIONS,
+} from "../homeSampleData";
 
 /**
- * Temporary main screen (US1.2): shows who is signed in and lets them sign out.
- * The real main screen will replace this page in its own task.
+ * Static main screen (US1.2). Only the user's name is real; balances,
+ * accounts and transactions are sample data from homeSampleData.ts.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
+  const [now] = useState(() => Date.now());
 
   if (!user) {
     return <SessionLoading />;
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-white px-6 py-10">
-      <div className="flex w-full max-w-sm flex-col gap-8">
-        <BrandLogo />
-
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {user.name ? `Hola, ${user.name}` : "Hola!"}
-          </h1>
-          <p className="text-sm text-slate-500">{user.email}</p>
-        </header>
-
-        <SignOutButton />
-      </div>
-    </main>
+    <div className="min-h-screen bg-slate-50">
+      <main className="mx-auto flex max-w-md flex-col gap-6 px-5 pt-8 pb-28">
+        <HomeHeader name={user.name} />
+        <BalanceCard
+          totalCents={SAMPLE_TOTAL_BALANCE_CENTS}
+          accountCount={SAMPLE_ACCOUNTS.length}
+        />
+        <HomeSection title="Els meus comptes" actionLabel="Veure'ls tots">
+          <AccountList accounts={SAMPLE_ACCOUNTS} />
+        </HomeSection>
+        <HomeSection title="Últims moviments" actionLabel="Veure'ls tots">
+          <TransactionList transactions={SAMPLE_TRANSACTIONS} nowMs={now} />
+        </HomeSection>
+      </main>
+      <BottomNav />
+    </div>
   );
 }
