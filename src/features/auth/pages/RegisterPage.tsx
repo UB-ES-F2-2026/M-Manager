@@ -1,22 +1,16 @@
-import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import PasswordField from "../../../components/ui/PasswordField";
 import TextField from "../../../components/ui/TextField";
 import BrandLogo from "../components/BrandLogo";
+import FormAlert from "../components/FormAlert";
 import PasswordStrengthMeter from "../components/PasswordStrengthMeter";
+import { MAX_NAME_LENGTH, useRegisterForm } from "../hooks/useRegisterForm";
 
 /** US1.1: sign-up screen (name, email and password). */
 export default function RegisterPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    // Sending the form to Convex Auth, showing errors and redirecting
-    // are done in a separate task.
-  }
+  const { fields, errors, isSubmitting, setField, handleSubmit } = useRegisterForm();
+  const { fieldErrors, alert } = errors;
 
   return (
     <main className="flex min-h-screen justify-center bg-white px-6 py-10">
@@ -31,12 +25,16 @@ export default function RegisterPage() {
         </header>
 
         <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {alert && <FormAlert title={alert.title} description={alert.description} />}
           <TextField
             label="Nom"
             name="name"
             autoComplete="name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+            maxLength={MAX_NAME_LENGTH}
+            value={fields.name}
+            onChange={(event) => setField("name", event.target.value)}
+            error={fieldErrors.name}
+            disabled={isSubmitting}
           />
           <TextField
             label="Correu electrònic"
@@ -44,21 +42,25 @@ export default function RegisterPage() {
             type="email"
             autoComplete="email"
             placeholder="tu@email.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            value={fields.email}
+            onChange={(event) => setField("email", event.target.value)}
+            error={fieldErrors.email}
+            disabled={isSubmitting}
           />
           <PasswordField
             label="Contrasenya"
             name="password"
             autoComplete="new-password"
             placeholder="••••••••"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            hint={<PasswordStrengthMeter password={password} />}
+            value={fields.password}
+            onChange={(event) => setField("password", event.target.value)}
+            error={fieldErrors.password}
+            hint={<PasswordStrengthMeter password={fields.password} />}
+            disabled={isSubmitting}
           />
 
-          <Button type="submit" className="mt-2">
-            Crear compte
+          <Button type="submit" loading={isSubmitting} className="mt-2">
+            {isSubmitting ? "Processant…" : "Crear compte"}
           </Button>
         </form>
 

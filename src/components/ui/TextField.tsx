@@ -46,7 +46,7 @@ export default function TextField({
         {trailing}
       </div>
       {error ? (
-        <p id={messageId} className="flex items-center gap-1 text-xs text-danger">
+        <p id={messageId} role="alert" className="flex items-center gap-1 text-xs text-danger">
           <WarningIcon />
           {error}
         </p>
