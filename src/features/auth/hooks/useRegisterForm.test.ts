@@ -10,7 +10,7 @@ import {
 describe("validateRegisterFields", () => {
   it("accepts filled fields", () => {
     expect(
-      validateRegisterFields({ name: "Ana", email: "ana@banco.es", password: "secret123" }),
+      validateRegisterFields({ name: "Ana", email: "ana@banco.es", password: "Secret123!" }),
     ).toEqual({});
   });
 
@@ -22,16 +22,16 @@ describe("validateRegisterFields", () => {
     });
   });
 
-  it("uses the backend rules for name length and password length", () => {
+  it("uses the backend rules for name length and password strength", () => {
     expect(
       validateRegisterFields({
         name: "A name that is far too long",
         email: "ana@banco.es",
-        password: "short",
+        password: "secret123",
       }),
     ).toEqual({
       name: "El nom és massa llarg.",
-      password: "La contrasenya ha de tenir almenys 8 caràcters.",
+      password: "La contrasenya ha de tenir almenys 8 caràcters, amb majúscula, número i símbol.",
     });
   });
 
@@ -55,13 +55,13 @@ describe("getRegisterErrors", () => {
     });
   });
 
-  it("maps a short password to the password field", () => {
+  it("maps an invalid password to the password field", () => {
     const error = new ConvexError({
       code: "INVALID_PASSWORD",
-      message: "La contrasenya ha de tenir almenys 8 caràcters.",
+      message: "La contrasenya ha de tenir almenys 8 caràcters, amb majúscula, número i símbol.",
     });
     expect(getRegisterErrors(error).fieldErrors).toEqual({
-      password: "La contrasenya ha de tenir almenys 8 caràcters.",
+      password: "La contrasenya ha de tenir almenys 8 caràcters, amb majúscula, número i símbol.",
     });
   });
 

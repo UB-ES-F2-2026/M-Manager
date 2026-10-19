@@ -3,6 +3,11 @@ import { ConvexError } from "convex/values";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_NAME_LENGTH = 20;
 const MIN_PASSWORD_LENGTH = 8;
+const HAS_UPPERCASE = /[A-Z]/;
+const HAS_DIGIT = /\d/;
+const HAS_SYMBOL = /[^A-Za-z0-9]/
+const PASSWORD_REQUIREMENTS_MESSAGE =
+  "La contrasenya ha de tenir almenys 8 caràcters, amb majúscula, número i símbol.";
 
 export type AuthErrorCode =
   | "INVALID_NAME"
@@ -84,12 +89,21 @@ export function assertValidEmail(email: unknown): string {
   return normalized;
 }
 
-/** Requires a string password with at least MIN_PASSWORD_LENGTH characters. */
+/**
+ * Requires a string password with at least MIN_PASSWORD_LENGTH characters,
+ * one uppercase letter, one digit and one symbol.
+ */
 export function assertValidPassword(password: unknown): void {
-  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+  if (
+    typeof password !== "string" ||
+    password.length < MIN_PASSWORD_LENGTH ||
+    !HAS_UPPERCASE.test(password) ||
+    !HAS_DIGIT.test(password) ||
+    !HAS_SYMBOL.test(password)
+  ) {
     throw new ConvexError({
       code: "INVALID_PASSWORD" satisfies AuthErrorCode,
-      message: "La contrasenya ha de tenir almenys 8 caràcters.",
+      message: PASSWORD_REQUIREMENTS_MESSAGE,
     });
   }
 }

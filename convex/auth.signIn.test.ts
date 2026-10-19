@@ -26,7 +26,7 @@ beforeAll(async () => {
   vi.stubEnv("CONVEX_SITE_URL", "https://m-manager.test");
 });
 
-const ANA = { name: "Ana", email: "ana@example.com", password: "secret123" };
+const ANA = { name: "Ana", email: "ana@example.com", password: "Secret123!" };
 
 /** Registers Ana and signs her out, so each test starts from a stored account. */
 async function setupWithAccount(): Promise<TestConvex> {
