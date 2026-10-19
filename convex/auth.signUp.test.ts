@@ -50,7 +50,7 @@ function listUsers(t: TestConvex) {
   return t.run((ctx) => ctx.db.query("users").collect());
 }
 
-const ANA = { name: "Ana", email: "ana@example.com", password: "secret123" };
+const ANA = { name: "Ana", email: "ana@example.com", password: "Secret123!" };
 
 describe("US1.1 AC1 · name, email and password", () => {
   it("creates the user with the trimmed name and normalized email", async () => {
@@ -59,7 +59,7 @@ describe("US1.1 AC1 · name, email and password", () => {
     await signUp(t, {
       name: "  Ana Puig  ",
       email: "  Ana@Example.COM ",
-      password: "secret123",
+      password: "Secret123!",
     });
 
     const users = await listUsers(t);
@@ -87,10 +87,11 @@ describe("US1.1 AC1 · name, email and password", () => {
     expect(await listUsers(t)).toHaveLength(0);
   });
 
-  it("rejects a password shorter than 8 characters", async () => {
+  it("rejects a password that does not meet the strength rules", async () => {
     const t = setup();
 
     await expectAuthError(signUp(t, { ...ANA, password: "short" }), "INVALID_PASSWORD");
+    await expectAuthError(signUp(t, { ...ANA, password: "secret123" }), "INVALID_PASSWORD");
     expect(await listUsers(t)).toHaveLength(0);
   });
 });
@@ -108,7 +109,7 @@ describe("US1.1 AC2 · valid and unique email", () => {
     await signUp(t, ANA);
 
     await expectAuthError(
-      signUp(t, { ...ANA, name: "Another Ana", password: "different123" }),
+      signUp(t, { ...ANA, name: "Another Ana", password: "Different123!" }),
       "EMAIL_TAKEN",
     );
     expect(await listUsers(t)).toHaveLength(1);

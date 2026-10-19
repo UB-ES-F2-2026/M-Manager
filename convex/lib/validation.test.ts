@@ -57,12 +57,18 @@ describe("assertValidEmail", () => {
 });
 
 describe("assertValidPassword", () => {
-  it("accepts passwords with 8+ characters", () => {
-    expect(() => assertValidPassword("password")).not.toThrow();
+  it("accepts passwords that meet length, uppercase, digit and symbol", () => {
+    expect(() => assertValidPassword("Secret1!")).not.toThrow();
   });
 
   it("rejects short passwords", () => {
-    expectConvexError(() => assertValidPassword("short"), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword("Ab1!"), "INVALID_PASSWORD");
+  });
+
+  it("rejects passwords missing uppercase, digit or symbol", () => {
+    expectConvexError(() => assertValidPassword("secret1!"), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword("Secret!!"), "INVALID_PASSWORD");
+    expectConvexError(() => assertValidPassword("Secret12"), "INVALID_PASSWORD");
   });
 
   it("rejects empty or non-string passwords", () => {
