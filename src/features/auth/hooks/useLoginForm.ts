@@ -1,12 +1,14 @@
 import { useAuthActions } from "@convex-dev/auth/react";
+import { ConvexError } from "convex/values";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { INVALID_CREDENTIALS_MESSAGE } from "../../../../convex/lib/validation";
 
 export const REQUIRED_FIELD_MESSAGE = "Aquest camp és obligatori";
 
 /** Generic credentials error (AC2): it never says which field is wrong. */
 export const LOGIN_ERROR_ALERT = {
-  title: "Correu electrònic o contrasenya incorrectes",
+  title: INVALID_CREDENTIALS_MESSAGE,
   description: "Revisa les teves dades i torna-ho a provar.",
 };
 
@@ -34,6 +36,27 @@ export function validateLoginFields(fields: LoginFields): LoginFieldErrors {
   return errors;
 }
 
+/** True when the backend rejected the login with INVALID_CREDENTIALS (or a legacy Auth error). */
+export function isInvalidCredentialsError(error: unknown): boolean {
+  if (
+    error instanceof ConvexError &&
+    typeof error.data === "object" &&
+    error.data !== null &&
+    "code" in error.data &&
+    error.data.code === "INVALID_CREDENTIALS"
+  ) {
+    return true;
+  }
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message === "InvalidSecret" ||
+    error.message === "InvalidAccountId" ||
+    error.message === "TooManyFailedAttempts"
+  );
+}
+
 /** Tries to sign in with Convex Auth. Returns false when the credentials are rejected. */
 export async function attemptLogin(signIn: PasswordSignIn, fields: LoginFields): Promise<boolean> {
   try {
@@ -43,7 +66,11 @@ export async function attemptLogin(signIn: PasswordSignIn, fields: LoginFields):
       flow: "signIn",
     });
     return true;
-  } catch {
+  } catch (error) {
+    if (isInvalidCredentialsError(error)) {
+      return false;
+    }
+    // Unexpected failures still surface as the generic credentials alert (AC2).
     return false;
   }
 }

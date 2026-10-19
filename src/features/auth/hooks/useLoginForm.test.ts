@@ -1,5 +1,13 @@
+import { ConvexError } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
-import { attemptLogin, REQUIRED_FIELD_MESSAGE, validateLoginFields } from "./useLoginForm";
+import { INVALID_CREDENTIALS_MESSAGE } from "../../../../convex/lib/validation";
+import {
+  attemptLogin,
+  isInvalidCredentialsError,
+  LOGIN_ERROR_ALERT,
+  REQUIRED_FIELD_MESSAGE,
+  validateLoginFields,
+} from "./useLoginForm";
 
 describe("validateLoginFields", () => {
   it("accepts filled email and password", () => {
@@ -42,5 +50,35 @@ describe("attemptLogin", () => {
     await expect(
       attemptLogin(signIn, { email: "ana@banco.es", password: "wrong-password" }),
     ).resolves.toBe(false);
+  });
+
+  it("returns false when the backend throws INVALID_CREDENTIALS", async () => {
+    const signIn = vi.fn().mockRejectedValue(
+      new ConvexError({
+        code: "INVALID_CREDENTIALS",
+        message: INVALID_CREDENTIALS_MESSAGE,
+      }),
+    );
+
+    await expect(
+      attemptLogin(signIn, { email: "ana@banco.es", password: "wrong-password" }),
+    ).resolves.toBe(false);
+  });
+});
+
+describe("isInvalidCredentialsError", () => {
+  it("recognises the structured backend error", () => {
+    expect(
+      isInvalidCredentialsError(
+        new ConvexError({
+          code: "INVALID_CREDENTIALS",
+          message: INVALID_CREDENTIALS_MESSAGE,
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the login alert title aligned with the backend message", () => {
+    expect(LOGIN_ERROR_ALERT.title).toBe(INVALID_CREDENTIALS_MESSAGE);
   });
 });
