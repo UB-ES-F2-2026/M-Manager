@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Design tokens: use them as bg-primary, text-danger, border-success... */
+@theme {
+  --color-primary: #1e40af;
+  --color-primary-soft: #eff6ff;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-success: #15803d;
+  /* Password meter: 2 and 3 segments, progressively less red than danger */
+  --color-strength-2: #ea580c;
+  --color-strength-3: #f59e0b;
+}
+
 :root {
   color-scheme: light;
   font-family: "Segoe UI", system-ui, sans-serif;
