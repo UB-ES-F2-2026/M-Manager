@@ -29,12 +29,12 @@ Projecte del **Grup F2** de l'assignatura d'Enginyeria del Software (Universitat
 
 | Nom | Sprint 0 | Sprint 1 | Sprint 2 | Sprint 3 |
 |---|---|---|---|---|
-| Lluc | DevOps · **Scrum Master** | | | |
-| Zakaria | QA · **Product Owner** | | | |
-| Marti | Backend | | | |
-| Nelson | Backend | | | |
-| Ayoub | Frontend | | | |
-| Joel | Frontend | | | |
+| Lluc | DevOps · **Scrum Master** | Backend · **Product Owner** | | |
+| Zakaria | QA · **Product Owner** | Frontend · **Scrum Master** | | |
+| Marti | Backend | Frontend · DevOps | | |
+| Nelson | Backend | Frontend · DevOps | | |
+| Ayoub | Frontend | QA · Backend | | |
+| Joel | Frontend | Backend · QA | | |
 
 Els rols es revisen a l'inici de cada sprint i s'actualitza aquesta taula. Cada persona ha de fer **almenys dos rols tècnics diferents** al llarg del projecte. Els rols de Scrum Master i Product Owner són a temps parcial: qui els fa també té un rol tècnic.
 
