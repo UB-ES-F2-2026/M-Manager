@@ -11,7 +11,9 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -24,7 +26,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
+  transactions: typeof transactions;
   users: typeof users;
 }>;
 

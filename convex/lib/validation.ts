@@ -118,3 +118,40 @@ export function validateSignUpProfile(params: {
     name: assertValidName(params.name),
   };
 }
+
+export type TransactionErrorCode =
+  | "INVALID_AMOUNT"
+  | "INVALID_DATE"
+  | "INVALID_CONCEPT";
+
+/** Amounts are stored as positive integer cents (README §6). */
+export function assertValidAmountCents(amountCents: number): void {
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    throw new ConvexError({
+      code: "INVALID_AMOUNT" satisfies TransactionErrorCode,
+      message: "L'import ha de ser un nombre enter positiu en cèntims.",
+    });
+  }
+}
+
+/** Requires an integer timestamp in ms that JavaScript can represent as a date. */
+export function assertValidDate(date: number): void {
+  if (!Number.isInteger(date) || Number.isNaN(new Date(date).getTime())) {
+    throw new ConvexError({
+      code: "INVALID_DATE" satisfies TransactionErrorCode,
+      message: "La data no és vàlida.",
+    });
+  }
+}
+
+/** Rejects blank concepts and returns the trimmed text. */
+export function assertValidConcept(concept: string): string {
+  const trimmed = concept.trim();
+  if (trimmed.length < 1) {
+    throw new ConvexError({
+      code: "INVALID_CONCEPT" satisfies TransactionErrorCode,
+      message: "El concepte és obligatori.",
+    });
+  }
+  return trimmed;
+}
