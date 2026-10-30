@@ -11,7 +11,10 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_dateRange from "../lib/dateRange.js";
+import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as transactionHistory from "../transactionHistory.js";
 import type * as users from "../users.js";
 
 import type {
@@ -24,7 +27,10 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/dateRange": typeof lib_dateRange;
+  "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
+  transactionHistory: typeof transactionHistory;
   users: typeof users;
 }>;
 
