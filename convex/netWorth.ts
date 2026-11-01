@@ -1,15 +1,19 @@
 import { ConvexError, v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx } from "./_generated/server";
-import { requireAuthUserId } from "./lib/auth";
+import { mutation, query } from "./_generated/server";
 import { assetTypeValidator } from "./lib/assetTypes";
+import { requireAuthUserId } from "./lib/auth";
+import { requireOwnedDocument } from "./lib/ownership";
 
 type NetWorthErrorCode =
   | "INVALID_AMOUNT"
   | "INVALID_NAME"
   | "INVALID_CONCEPT"
-  | "INVALID_DUE_DATE"
-  | "NOT_FOUND";
+  | "INVALID_DUE_DATE";
+
+/** Cap for asset names and debt concepts shown in the UI. */
+export const MAX_LABEL_LENGTH = 80;
+
+const AMOUNT_MESSAGE = "L'import ha de ser més gran que zero.";
 
 function throwNetWorthError(code: NetWorthErrorCode, message: string): never {
   throw new ConvexError({ code, message });
@@ -17,61 +21,56 @@ function throwNetWorthError(code: NetWorthErrorCode, message: string): never {
 
 /** Amounts are stored as positive integer cents (README §6). */
 function assertPositiveAmountCents(amountCents: number): void {
-  if (!Number.isInteger(amountCents) || amountCents <= 0) {
-    throwNetWorthError(
-      "INVALID_AMOUNT",
-      "L'import ha de ser un nombre enter positiu en cèntims.",
-    );
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    throwNetWorthError("INVALID_AMOUNT", AMOUNT_MESSAGE);
   }
+}
+
+function assertLabel(
+  value: string,
+  code: "INVALID_NAME" | "INVALID_CONCEPT",
+  emptyMessage: string,
+  tooLongMessage: string,
+): string {
+  const trimmed = value.trim();
+  if (trimmed.length < 1) {
+    throwNetWorthError(code, emptyMessage);
+  }
+  if (trimmed.length > MAX_LABEL_LENGTH) {
+    throwNetWorthError(code, tooLongMessage);
+  }
+  return trimmed;
 }
 
 function assertName(name: string): string {
-  const trimmed = name.trim();
-  if (trimmed.length < 1) {
-    throwNetWorthError("INVALID_NAME", "El nom de l'actiu és obligatori.");
-  }
-  return trimmed;
+  return assertLabel(
+    name,
+    "INVALID_NAME",
+    "El nom de l'actiu és obligatori.",
+    "El nom de l'actiu és massa llarg.",
+  );
 }
 
 function assertConcept(concept: string): string {
-  const trimmed = concept.trim();
-  if (trimmed.length < 1) {
-    throwNetWorthError("INVALID_CONCEPT", "El concepte del deute és obligatori.");
-  }
-  return trimmed;
+  return assertLabel(
+    concept,
+    "INVALID_CONCEPT",
+    "El concepte del deute és obligatori.",
+    "El concepte del deute és massa llarg.",
+  );
 }
 
+/** Due dates are integer timestamps in milliseconds (README §6). */
 function assertDueDate(dueDate: number): void {
-  if (!Number.isFinite(dueDate)) {
+  if (
+    !Number.isInteger(dueDate) ||
+    Number.isNaN(new Date(dueDate).getTime())
+  ) {
     throwNetWorthError(
       "INVALID_DUE_DATE",
       "La data de venciment no és vàlida.",
     );
   }
-}
-
-async function requireOwnedAsset(
-  ctx: MutationCtx,
-  userId: Id<"users">,
-  assetId: Id<"assets">,
-): Promise<Doc<"assets">> {
-  const asset = await ctx.db.get(assetId);
-  if (asset === null || asset.userId !== userId) {
-    throwNetWorthError("NOT_FOUND", "No s'ha trobat aquest actiu.");
-  }
-  return asset;
-}
-
-async function requireOwnedDebt(
-  ctx: MutationCtx,
-  userId: Id<"users">,
-  debtId: Id<"debts">,
-): Promise<Doc<"debts">> {
-  const debt = await ctx.db.get(debtId);
-  if (debt === null || debt.userId !== userId) {
-    throwNetWorthError("NOT_FOUND", "No s'ha trobat aquest deute.");
-  }
-  return debt;
 }
 
 /** Lists the signed-in user's assets and debts (US3.2). */
@@ -125,7 +124,12 @@ export const updateAsset = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
-    await requireOwnedAsset(ctx, userId, args.assetId);
+    await requireOwnedDocument(
+      ctx,
+      userId,
+      args.assetId,
+      "No s'ha trobat aquest actiu.",
+    );
     const name = assertName(args.name);
     assertPositiveAmountCents(args.amountCents);
 
@@ -142,7 +146,12 @@ export const removeAsset = mutation({
   args: { assetId: v.id("assets") },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
-    await requireOwnedAsset(ctx, userId, args.assetId);
+    await requireOwnedDocument(
+      ctx,
+      userId,
+      args.assetId,
+      "No s'ha trobat aquest actiu.",
+    );
     await ctx.db.delete(args.assetId);
   },
 });
@@ -179,7 +188,12 @@ export const updateDebt = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
-    await requireOwnedDebt(ctx, userId, args.debtId);
+    await requireOwnedDocument(
+      ctx,
+      userId,
+      args.debtId,
+      "No s'ha trobat aquest deute.",
+    );
     const concept = assertConcept(args.concept);
     assertPositiveAmountCents(args.amountCents);
     assertDueDate(args.dueDate);
@@ -197,7 +211,12 @@ export const removeDebt = mutation({
   args: { debtId: v.id("debts") },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
-    await requireOwnedDebt(ctx, userId, args.debtId);
+    await requireOwnedDocument(
+      ctx,
+      userId,
+      args.debtId,
+      "No s'ha trobat aquest deute.",
+    );
     await ctx.db.delete(args.debtId);
   },
 });
