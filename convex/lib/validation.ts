@@ -129,7 +129,7 @@ export function assertValidAmountCents(amountCents: number): void {
   if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
     throw new ConvexError({
       code: "INVALID_AMOUNT" satisfies TransactionErrorCode,
-      message: "L'import ha de ser un nombre enter positiu en cèntims.",
+      message: "L'import ha de ser més gran que zero.",
     });
   }
 }
