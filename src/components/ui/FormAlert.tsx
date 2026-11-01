@@ -3,7 +3,7 @@ type FormAlertProps = {
   description: string;
 };
 
-/** Red box at the top of an auth form for errors that are not tied to one field. */
+/** Red box at the top of a form for errors that are not tied to one field. */
 export default function FormAlert({ title, description }: FormAlertProps) {
   return (
     <div

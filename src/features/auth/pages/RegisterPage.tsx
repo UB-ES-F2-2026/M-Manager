@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
+import FormAlert from "../../../components/ui/FormAlert";
 import PasswordField from "../../../components/ui/PasswordField";
 import TextField from "../../../components/ui/TextField";
 import BrandLogo from "../components/BrandLogo";
-import FormAlert from "../components/FormAlert";
 import PasswordStrengthMeter from "../components/PasswordStrengthMeter";
 import { MAX_NAME_LENGTH, useRegisterForm } from "../hooks/useRegisterForm";
 
