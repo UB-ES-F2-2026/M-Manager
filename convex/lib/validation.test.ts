@@ -1,6 +1,9 @@
 import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
 import {
+  assertValidAmountCents,
+  assertValidConcept,
+  assertValidDate,
   assertValidEmail,
   assertValidName,
   assertValidPassword,
@@ -124,5 +127,51 @@ describe("throwInvalidCredentials", () => {
       expect(data.code).toBe("INVALID_CREDENTIALS");
       expect(data.message).toBe(INVALID_CREDENTIALS_MESSAGE);
     }
+  });
+});
+
+describe("assertValidAmountCents", () => {
+  it("accepts positive integer cents", () => {
+    expect(() => assertValidAmountCents(1)).not.toThrow();
+    expect(() => assertValidAmountCents(1250)).not.toThrow();
+  });
+
+  it("rejects zero, negative and decimal amounts", () => {
+    expectConvexError(() => assertValidAmountCents(0), "INVALID_AMOUNT");
+    expectConvexError(() => assertValidAmountCents(-1), "INVALID_AMOUNT");
+    expectConvexError(() => assertValidAmountCents(12.5), "INVALID_AMOUNT");
+  });
+
+  it("rejects values that are not exact integers", () => {
+    expectConvexError(() => assertValidAmountCents(NaN), "INVALID_AMOUNT");
+    expectConvexError(() => assertValidAmountCents(Infinity), "INVALID_AMOUNT");
+    expectConvexError(() => assertValidAmountCents(2 ** 53), "INVALID_AMOUNT");
+  });
+});
+
+describe("assertValidDate", () => {
+  it("accepts a timestamp in milliseconds", () => {
+    expect(() => assertValidDate(Date.UTC(2026, 9, 30))).not.toThrow();
+  });
+
+  it("rejects values that are not integers", () => {
+    expectConvexError(() => assertValidDate(1.5), "INVALID_DATE");
+    expectConvexError(() => assertValidDate(NaN), "INVALID_DATE");
+    expectConvexError(() => assertValidDate(Infinity), "INVALID_DATE");
+  });
+
+  it("rejects timestamps outside the range of a JavaScript date", () => {
+    expectConvexError(() => assertValidDate(8.64e15 + 1), "INVALID_DATE");
+  });
+});
+
+describe("assertValidConcept", () => {
+  it("returns the trimmed concept", () => {
+    expect(assertValidConcept("  Supermercat  ")).toBe("Supermercat");
+  });
+
+  it("rejects an empty or blank concept", () => {
+    expectConvexError(() => assertValidConcept(""), "INVALID_CONCEPT");
+    expectConvexError(() => assertValidConcept("   "), "INVALID_CONCEPT");
   });
 });
