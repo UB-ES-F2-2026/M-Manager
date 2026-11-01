@@ -11,7 +11,7 @@ import { assertValidDateRange } from "./lib/dateRange";
  * month depends on the user's timezone and Convex runs in UTC.
  * Being a query, the result updates on its own when a transaction changes.
  */
-export const get = query({
+export const monthlySavings = query({
   args: {
     monthStart: v.number(),
     monthEnd: v.number(),
