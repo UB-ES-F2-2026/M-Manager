@@ -4,6 +4,7 @@ import RequireSession from "./features/auth/components/RequireSession";
 import HomePage from "./features/auth/pages/HomePage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
 
 export default function App() {
   return (
@@ -30,6 +31,14 @@ export default function App() {
           <RedirectIfSignedIn>
             <RegisterPage />
           </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/net-worth/new"
+        element={
+          <RequireSession>
+            <NewNetWorthItemPage />
+          </RequireSession>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
