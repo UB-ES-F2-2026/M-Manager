@@ -132,6 +132,20 @@ describe("transactions.create", () => {
     expect(await listTransactions(t)).toHaveLength(0);
   });
 
+  it("rejects a concept longer than 80 characters and stores nothing", async () => {
+    const t = setup();
+    const { client } = await signedInAs(t, "Ana");
+
+    await expectConvexError(
+      client.mutation(api.transactions.create, {
+        ...GROCERIES,
+        concept: "a".repeat(81),
+      }),
+      "INVALID_CONCEPT",
+    );
+    expect(await listTransactions(t)).toHaveLength(0);
+  });
+
   it("rejects a blank concept and stores nothing", async () => {
     const t = setup();
     const { client } = await signedInAs(t, "Ana");

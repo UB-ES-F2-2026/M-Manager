@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_NAME_LENGTH = 20;
+const MAX_CONCEPT_LENGTH = 80;
 const MIN_PASSWORD_LENGTH = 8;
 const HAS_UPPERCASE = /[A-Z]/;
 const HAS_DIGIT = /\d/;
@@ -144,13 +145,19 @@ export function assertValidDate(date: number): void {
   }
 }
 
-/** Rejects blank concepts and returns the trimmed text. */
+/** Rejects blank concepts and concepts longer than MAX_CONCEPT_LENGTH; returns the trimmed text. */
 export function assertValidConcept(concept: string): string {
   const trimmed = concept.trim();
   if (trimmed.length < 1) {
     throw new ConvexError({
       code: "INVALID_CONCEPT" satisfies TransactionErrorCode,
       message: "El concepte és obligatori.",
+    });
+  }
+  if (trimmed.length > MAX_CONCEPT_LENGTH) {
+    throw new ConvexError({
+      code: "INVALID_CONCEPT" satisfies TransactionErrorCode,
+      message: "El concepte és massa llarg.",
     });
   }
   return trimmed;

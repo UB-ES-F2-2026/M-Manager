@@ -174,4 +174,18 @@ describe("assertValidConcept", () => {
     expectConvexError(() => assertValidConcept(""), "INVALID_CONCEPT");
     expectConvexError(() => assertValidConcept("   "), "INVALID_CONCEPT");
   });
+
+  it("accepts a concept of exactly 80 characters", () => {
+    const concept = "a".repeat(80);
+    expect(assertValidConcept(concept)).toBe(concept);
+  });
+
+  it("rejects a concept longer than 80 characters", () => {
+    expectConvexError(() => assertValidConcept("a".repeat(81)), "INVALID_CONCEPT");
+  });
+
+  it("applies the limit after trimming", () => {
+    const concept = "a".repeat(80);
+    expect(assertValidConcept(`  ${concept}  `)).toBe(concept);
+  });
 });
