@@ -231,3 +231,221 @@ describe("US3.2 assets and debts", () => {
     expect(await t.run((ctx) => ctx.db.get(debtId))).toBeNull();
   });
 });
+
+// #66 · Cases the tests above do not cover yet.
+
+/** Ana with one asset and one debt, inserted directly so the setup does not depend on create*. */
+async function setupAnaWithRecords() {
+  const t = setup();
+  const { userId, assetId, debtId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { name: "Ana" });
+    const assetId = await ctx.db.insert("assets", { ...ASSET, userId });
+    const debtId = await ctx.db.insert("debts", {
+      userId,
+      concept: "Hipoteca",
+      amountCents: 1000,
+      dueDate: DUE_DATE,
+    });
+    return { userId, assetId, debtId };
+  });
+  const ana = t.withIdentity({ subject: `${userId}|session` });
+  return { t, ana, assetId, debtId };
+}
+
+function countRecords(t: TestConvex) {
+  return t.run(async (ctx) => ({
+    assets: (await ctx.db.query("assets").collect()).length,
+    debts: (await ctx.db.query("debts").collect()).length,
+  }));
+}
+
+describe("US3.2 · every function requires a session", () => {
+  it("rejects a logged-out caller on list, create, update and remove, and changes nothing", async () => {
+    const { t, assetId, debtId } = await setupAnaWithRecords();
+    const debt = { concept: "Préstec", amountCents: 500, dueDate: DUE_DATE };
+
+    await expectError(t.query(api.netWorth.list, {}), "UNAUTHENTICATED");
+    await expectError(t.mutation(api.netWorth.createDebt, debt), "UNAUTHENTICATED");
+    await expectError(
+      t.mutation(api.netWorth.updateAsset, { ...ASSET, assetId, name: "Canviat" }),
+      "UNAUTHENTICATED",
+    );
+    await expectError(
+      t.mutation(api.netWorth.updateDebt, { ...debt, debtId }),
+      "UNAUTHENTICATED",
+    );
+    await expectError(t.mutation(api.netWorth.removeAsset, { assetId }), "UNAUTHENTICATED");
+    await expectError(t.mutation(api.netWorth.removeDebt, { debtId }), "UNAUTHENTICATED");
+
+    expect(await countRecords(t)).toEqual({ assets: 1, debts: 1 });
+    expect(await t.run((ctx) => ctx.db.get(assetId))).toMatchObject(ASSET);
+    expect(await t.run((ctx) => ctx.db.get(debtId))).toMatchObject({ concept: "Hipoteca" });
+  });
+});
+
+describe("US3.2 · other users' records stay untouched", () => {
+  it("does not let another user delete a debt", async () => {
+    const { t, debtId } = await setupAnaWithRecords();
+    const bert = await asUser(t, "Bert");
+
+    await expectError(
+      bert.mutation(api.netWorth.removeDebt, { debtId }),
+      "NOT_FOUND",
+      "No s'ha trobat aquest deute.",
+    );
+    expect(await t.run((ctx) => ctx.db.get(debtId))).not.toBeNull();
+  });
+
+  it("leaves the asset and the debt unchanged after another user's failed edit", async () => {
+    const { t, assetId, debtId } = await setupAnaWithRecords();
+    const bert = await asUser(t, "Bert");
+
+    await expectError(
+      bert.mutation(api.netWorth.updateAsset, { ...ASSET, assetId, amountCents: 1 }),
+      "NOT_FOUND",
+    );
+    await expectError(
+      bert.mutation(api.netWorth.updateDebt, {
+        debtId,
+        concept: "Aliè",
+        amountCents: 1,
+        dueDate: DUE_DATE,
+      }),
+      "NOT_FOUND",
+    );
+    await expectError(bert.mutation(api.netWorth.removeAsset, { assetId }), "NOT_FOUND");
+
+    expect(await t.run((ctx) => ctx.db.get(assetId))).toMatchObject(ASSET);
+    expect(await t.run((ctx) => ctx.db.get(debtId))).toMatchObject({
+      concept: "Hipoteca",
+      amountCents: 1000,
+    });
+  });
+
+  it("does not show another user's records in their list", async () => {
+    const { t } = await setupAnaWithRecords();
+    const bert = await asUser(t, "Bert");
+
+    expect(await bert.query(api.netWorth.list, {})).toEqual({ assets: [], debts: [] });
+  });
+});
+
+describe("US3.2 AC3 · editing validates like creating", () => {
+  it("rejects an invalid asset edit and keeps the stored values", async () => {
+    const { t, ana, assetId } = await setupAnaWithRecords();
+
+    await expectError(
+      ana.mutation(api.netWorth.updateAsset, { ...ASSET, assetId, amountCents: 0 }),
+      "INVALID_AMOUNT",
+    );
+    await expectError(
+      ana.mutation(api.netWorth.updateAsset, { ...ASSET, assetId, name: "   " }),
+      "INVALID_NAME",
+    );
+    await expectError(
+      ana.mutation(api.netWorth.updateAsset, {
+        ...ASSET,
+        assetId,
+        name: "a".repeat(MAX_LABEL_LENGTH + 1),
+      }),
+      "INVALID_NAME",
+    );
+
+    expect(await t.run((ctx) => ctx.db.get(assetId))).toMatchObject(ASSET);
+  });
+
+  it("rejects an invalid debt edit and keeps the stored values", async () => {
+    const { t, ana, debtId } = await setupAnaWithRecords();
+    const valid = { debtId, concept: "Hipoteca", amountCents: 1000, dueDate: DUE_DATE };
+
+    await expectError(
+      ana.mutation(api.netWorth.updateDebt, { ...valid, amountCents: -5 }),
+      "INVALID_AMOUNT",
+    );
+    await expectError(
+      ana.mutation(api.netWorth.updateDebt, { ...valid, concept: "" }),
+      "INVALID_CONCEPT",
+    );
+    await expectError(
+      ana.mutation(api.netWorth.updateDebt, { ...valid, dueDate: 1.5 }),
+      "INVALID_DUE_DATE",
+    );
+
+    expect(await t.run((ctx) => ctx.db.get(debtId))).toMatchObject({
+      concept: "Hipoteca",
+      amountCents: 1000,
+      dueDate: DUE_DATE,
+    });
+  });
+
+  it("trims the name and the concept when editing", async () => {
+    const { t, ana, assetId, debtId } = await setupAnaWithRecords();
+
+    await ana.mutation(api.netWorth.updateAsset, { ...ASSET, assetId, name: "  Efectiu  " });
+    await ana.mutation(api.netWorth.updateDebt, {
+      debtId,
+      concept: "  Préstec  ",
+      amountCents: 1000,
+      dueDate: DUE_DATE,
+    });
+
+    expect(await t.run((ctx) => ctx.db.get(assetId))).toMatchObject({ name: "Efectiu" });
+    expect(await t.run((ctx) => ctx.db.get(debtId))).toMatchObject({ concept: "Préstec" });
+  });
+});
+
+describe("US3.2 · records that no longer exist", () => {
+  it("returns NOT_FOUND when editing or deleting an asset that was already deleted", async () => {
+    const { ana, assetId } = await setupAnaWithRecords();
+    await ana.mutation(api.netWorth.removeAsset, { assetId });
+
+    await expectError(
+      ana.mutation(api.netWorth.updateAsset, { ...ASSET, assetId }),
+      "NOT_FOUND",
+    );
+    await expectError(ana.mutation(api.netWorth.removeAsset, { assetId }), "NOT_FOUND");
+  });
+
+  it("returns NOT_FOUND when editing or deleting a debt that was already deleted", async () => {
+    const { ana, debtId } = await setupAnaWithRecords();
+    await ana.mutation(api.netWorth.removeDebt, { debtId });
+
+    await expectError(
+      ana.mutation(api.netWorth.updateDebt, {
+        debtId,
+        concept: "Hipoteca",
+        amountCents: 1000,
+        dueDate: DUE_DATE,
+      }),
+      "NOT_FOUND",
+    );
+    await expectError(ana.mutation(api.netWorth.removeDebt, { debtId }), "NOT_FOUND");
+  });
+});
+
+describe("US3.2 · list", () => {
+  it("returns the debts sorted by due date, the closest first", async () => {
+    const t = setup();
+    const ana = await asUser(t, "Ana");
+    const day = 86_400_000;
+    // Created out of order on purpose: the order must come from the due date.
+    for (const [concept, dueDate] of [
+      ["Cotxe", DUE_DATE + 2 * day],
+      ["Mòbil", DUE_DATE],
+      ["Hipoteca", DUE_DATE + 30 * day],
+    ] as const) {
+      await ana.mutation(api.netWorth.createDebt, { concept, amountCents: 1000, dueDate });
+    }
+
+    const { debts } = await ana.query(api.netWorth.list, {});
+
+    expect(debts.map((debt) => debt.concept)).toEqual(["Mòbil", "Cotxe", "Hipoteca"]);
+  });
+
+  it("returns empty lists for a user without assets or debts", async () => {
+    const t = setup();
+    const ana = await asUser(t, "Ana");
+
+    expect(await ana.query(api.netWorth.list, {})).toEqual({ assets: [], debts: [] });
+  });
+});
