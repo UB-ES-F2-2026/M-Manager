@@ -2,20 +2,35 @@ import { useState } from "react";
 import BottomNav from "../../../components/layout/BottomNav";
 import { TransferIcon } from "../../../components/ui/icons";
 import { formatRelativeDay } from "../../../lib/dates";
+import HistoryFilterBar from "../components/HistoryFilterBar";
 import TransactionHistoryItem from "../components/TransactionHistoryItem";
-import { useTransactionHistory } from "../hooks/useTransactionHistory";
+import {
+  EMPTY_HISTORY_FILTERS,
+  hasActiveFilters,
+  useTransactionHistory,
+  type HistoryFilters,
+} from "../hooks/useTransactionHistory";
 
-/** US2.3: every transaction of the user, newest first, grouped by day. */
+/** US2.3: every transaction of the user, newest first, grouped by day and filterable. */
 export default function TransactionHistoryPage() {
-  const days = useTransactionHistory();
+  const [filters, setFilters] = useState<HistoryFilters>(EMPTY_HISTORY_FILTERS);
+  const { days, rangeError } = useTransactionHistory(filters);
   const [now] = useState(() => Date.now());
+  const isFiltered = hasActiveFilters(filters);
 
   return (
     <div className="min-h-screen bg-slate-50">
       <main className="mx-auto flex max-w-md flex-col gap-6 px-5 pt-8 pb-28">
         <h1 className="text-2xl font-bold text-slate-900">Moviments</h1>
 
-        {days === undefined ? (
+        <HistoryFilterBar
+          filters={filters}
+          onChange={setFilters}
+          onClear={() => setFilters(EMPTY_HISTORY_FILTERS)}
+          rangeError={rangeError}
+        />
+
+        {rangeError ? null : days === undefined ? (
           <p role="status" className="text-sm text-slate-500">
             Carregant els moviments…
           </p>
@@ -24,10 +39,21 @@ export default function TransactionHistoryPage() {
             <span className="flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary">
               <TransferIcon />
             </span>
-            <p className="font-medium text-slate-900">Encara no tens moviments</p>
-            <p className="text-sm text-slate-500">
-              Quan registris un ingrés o una despesa, el veuràs aquí.
-            </p>
+            {isFiltered ? (
+              <>
+                <p className="font-medium text-slate-900">Cap moviment amb aquests filtres</p>
+                <p className="text-sm text-slate-500">
+                  Prova amb unes altres dates o una altra categoria.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-slate-900">Encara no tens moviments</p>
+                <p className="text-sm text-slate-500">
+                  Quan registris un ingrés o una despesa, el veuràs aquí.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           days.map((day) => (
