@@ -1,8 +1,8 @@
 import Button from "../../../components/ui/Button";
+import FormAlert from "../../../components/ui/FormAlert";
 import PasswordField from "../../../components/ui/PasswordField";
 import TextField from "../../../components/ui/TextField";
 import { LOGIN_ERROR_ALERT, useLoginForm } from "../hooks/useLoginForm";
-import FormAlert from "./FormAlert";
 
 /** Email + password login form (US1.2 · AC1, AC2, AC3). */
 export default function LoginForm() {

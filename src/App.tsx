@@ -4,6 +4,7 @@ import RequireSession from "./features/auth/components/RequireSession";
 import HomePage from "./features/auth/pages/HomePage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import NewTransactionPage from "./features/transactions/pages/NewTransactionPage";
 
 export default function App() {
   return (
@@ -30,6 +31,14 @@ export default function App() {
           <RedirectIfSignedIn>
             <RegisterPage />
           </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/transactions/new"
+        element={
+          <RequireSession>
+            <NewTransactionPage />
+          </RequireSession>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
