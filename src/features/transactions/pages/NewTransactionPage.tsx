@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import FormAlert from "../../../components/ui/FormAlert";
-import TextField from "../../../components/ui/TextField";
-import CategoryField from "../components/CategoryField";
-import TransactionTypeToggle from "../components/TransactionTypeToggle";
+import TransactionFormFields from "../components/TransactionFormFields";
 import { useTransactionForm } from "../hooks/useTransactionForm";
 
 /** US2.1: register an income or an expense. */
@@ -23,47 +21,11 @@ export default function NewTransactionPage() {
 
         <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
           {alert && <FormAlert title={alert.title} description={alert.description} />}
-          <TransactionTypeToggle
-            value={fields.type}
-            onChange={(type) => setField("type", type)}
+          <TransactionFormFields
+            fields={fields}
+            fieldErrors={fieldErrors}
             disabled={isSubmitting}
-          />
-          <TextField
-            label="Import"
-            name="amount"
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0,00"
-            value={fields.amount}
-            onChange={(event) => setField("amount", event.target.value)}
-            error={fieldErrors.amount}
-            trailing={<span className="pr-3 text-sm text-slate-500">€</span>}
-            disabled={isSubmitting}
-          />
-          <TextField
-            label="Data"
-            name="date"
-            type="date"
-            value={fields.date}
-            onChange={(event) => setField("date", event.target.value)}
-            error={fieldErrors.date}
-            disabled={isSubmitting}
-          />
-          <CategoryField
-            value={fields.category}
-            onChange={(category) => setField("category", category)}
-            error={fieldErrors.category}
-            disabled={isSubmitting}
-          />
-          <TextField
-            label="Concepte"
-            name="concept"
-            autoComplete="off"
-            placeholder="Ex. Compra al supermercat"
-            value={fields.concept}
-            onChange={(event) => setField("concept", event.target.value)}
-            error={fieldErrors.concept}
-            disabled={isSubmitting}
+            setField={setField}
           />
 
           <Button type="submit" loading={isSubmitting} className="mt-2">

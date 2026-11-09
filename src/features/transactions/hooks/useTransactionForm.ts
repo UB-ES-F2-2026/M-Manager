@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
@@ -24,6 +25,12 @@ export const MISSING_CATEGORY_MESSAGE = "Tria una categoria.";
 export const SAVE_ERROR_ALERT: FormAlertMessage = {
   title: "No s'ha pogut desar el moviment",
   description: "Torna-ho a provar d'aquí a una estona.",
+};
+
+/** Shown when the transaction being edited no longer exists. */
+export const NOT_FOUND_ALERT: FormAlertMessage = {
+  title: "No s'ha trobat aquest moviment",
+  description: "Potser s'ha eliminat. Torna a la pantalla principal.",
 };
 
 export type TransactionType = "expense" | "income";
@@ -101,6 +108,22 @@ export function emptyTransactionFields(nowMs: number): TransactionFields {
     date: toDateInputValue(nowMs),
     category: "",
     concept: "",
+  };
+}
+
+/** Cents as the amount input expects them, e.g. 4290 → "42,90" (no thousands separator). */
+export function toAmountInputValue(amountCents: number): string {
+  return (amountCents / 100).toFixed(2).replace(".", ",");
+}
+
+/** Form values of a stored transaction, to start the edit form filled in. */
+export function transactionToFields(transaction: Doc<"transactions">): TransactionFields {
+  return {
+    type: transaction.type,
+    amount: toAmountInputValue(transaction.amountCents),
+    date: toDateInputValue(transaction.date),
+    category: transaction.category,
+    concept: transaction.concept,
   };
 }
 
@@ -187,9 +210,12 @@ const FIELD_BY_ERROR_CODE: Record<string, ValidatedField> = {
   INVALID_CONCEPT: "concept",
 };
 
-/** Turns an error from `api.transactions.create` into messages for the form. */
+/** Turns an error from `api.transactions.create` or `update` into messages for the form. */
 export function getTransactionErrors(error: unknown): TransactionErrors {
   if (error instanceof ConvexError && isCodedError(error.data)) {
+    if (error.data.code === "NOT_FOUND") {
+      return { fieldErrors: {}, alert: NOT_FOUND_ALERT };
+    }
     const field = FIELD_BY_ERROR_CODE[error.data.code];
     if (field) {
       return { fieldErrors: { [field]: error.data.message } };
@@ -198,12 +224,16 @@ export function getTransactionErrors(error: unknown): TransactionErrors {
   return { fieldErrors: {}, alert: SAVE_ERROR_ALERT };
 }
 
-/** Form state and submit logic for the new transaction screen (US2.1). */
-export function useTransactionForm() {
+/**
+ * Form state and submit logic for the new transaction screen (US2.1) and,
+ * when `transaction` is given, for editing it (US2.2).
+ */
+export function useTransactionForm(transaction?: Doc<"transactions">) {
   const createTransaction = useMutation(api.transactions.create);
+  const updateTransaction = useMutation(api.transactions.update);
   const navigate = useNavigate();
   const [fields, setFields] = useState<TransactionFields>(() =>
-    emptyTransactionFields(Date.now()),
+    transaction ? transactionToFields(transaction) : emptyTransactionFields(Date.now()),
   );
   const [errors, setErrors] = useState<TransactionErrors>({ fieldErrors: {} });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -220,7 +250,9 @@ export function useTransactionForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const { args, errors: fieldErrors } = parseTransactionFields(fields, Date.now());
+    // When editing, keep the original time of day so the order within the day does not change.
+    const timeOfDayMs = transaction ? transaction.date : Date.now();
+    const { args, errors: fieldErrors } = parseTransactionFields(fields, timeOfDayMs);
     setErrors({ fieldErrors });
     if (!args) {
       return;
@@ -228,7 +260,11 @@ export function useTransactionForm() {
 
     setIsSubmitting(true);
     try {
-      await createTransaction(args);
+      if (transaction) {
+        await updateTransaction({ transactionId: transaction._id, ...args });
+      } else {
+        await createTransaction(args);
+      }
       navigate("/", { replace: true });
     } catch (error) {
       setErrors(getTransactionErrors(error));

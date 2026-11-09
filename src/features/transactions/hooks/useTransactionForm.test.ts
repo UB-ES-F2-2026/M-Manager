@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { TRANSACTION_CATEGORIES } from "../../../../convex/lib/transactionCategories";
 import { CATEGORY_LABELS } from "../categoryLabels";
 import {
@@ -8,11 +9,14 @@ import {
   INVALID_AMOUNT_FORMAT_MESSAGE,
   INVALID_DATE_MESSAGE,
   MISSING_CATEGORY_MESSAGE,
+  NOT_FOUND_ALERT,
   parseDateInput,
   parseTransactionFields,
   REQUIRED_FIELD_MESSAGE,
   SAVE_ERROR_ALERT,
+  toAmountInputValue,
   toDateInputValue,
+  transactionToFields,
   type TransactionFields,
 } from "./useTransactionForm";
 
@@ -138,6 +142,11 @@ describe("getTransactionErrors", () => {
     });
   });
 
+  it("shows the not found alert when the edited transaction no longer exists", () => {
+    const error = new ConvexError({ code: "NOT_FOUND", message: "No s'ha trobat aquest moviment." });
+    expect(getTransactionErrors(error)).toEqual({ fieldErrors: {}, alert: NOT_FOUND_ALERT });
+  });
+
   it("falls back to a general alert for any other failure", () => {
     expect(getTransactionErrors(new Error("Server Error"))).toEqual({
       fieldErrors: {},
@@ -146,6 +155,54 @@ describe("getTransactionErrors", () => {
     expect(
       getTransactionErrors(new ConvexError({ code: "UNAUTHENTICATED", message: "Has d'iniciar sessió." })),
     ).toEqual({ fieldErrors: {}, alert: SAVE_ERROR_ALERT });
+  });
+});
+
+describe("toAmountInputValue", () => {
+  it("writes cents as euros with a decimal comma and no thousands separator", () => {
+    expect(toAmountInputValue(4290)).toBe("42,90");
+    expect(toAmountInputValue(500)).toBe("5,00");
+    expect(toAmountInputValue(185000)).toBe("1850,00");
+  });
+});
+
+describe("transactionToFields", () => {
+  const STORED: Doc<"transactions"> = {
+    _id: "transaction-1" as Id<"transactions">,
+    _creationTime: 0,
+    userId: "user-1" as Id<"users">,
+    type: "expense",
+    amountCents: 4290,
+    date: new Date(2026, 9, 28, 10, 15).getTime(),
+    category: "groceries",
+    concept: "Supermercat",
+  };
+
+  it("fills the form with the stored transaction", () => {
+    expect(transactionToFields(STORED)).toEqual({
+      type: "expense",
+      amount: "42,90",
+      date: "2026-10-28",
+      category: "groceries",
+      concept: "Supermercat",
+    });
+  });
+
+  it("saves the same values back, keeping the original time of day", () => {
+    const { args } = parseTransactionFields(transactionToFields(STORED), STORED.date);
+    expect(args).toEqual({
+      type: "expense",
+      amountCents: 4290,
+      date: STORED.date,
+      category: "groceries",
+      concept: "Supermercat",
+    });
+  });
+
+  it("keeps the original time of day when only the day changes", () => {
+    const fields = { ...transactionToFields(STORED), date: "2026-10-30" };
+    const { args } = parseTransactionFields(fields, STORED.date);
+    expect(args?.date).toBe(new Date(2026, 9, 30, 10, 15).getTime());
   });
 });
 

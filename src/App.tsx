@@ -4,6 +4,7 @@ import RequireSession from "./features/auth/components/RequireSession";
 import HomePage from "./features/auth/pages/HomePage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import EditTransactionPage from "./features/transactions/pages/EditTransactionPage";
 import NewTransactionPage from "./features/transactions/pages/NewTransactionPage";
 
 export default function App() {
@@ -38,6 +39,14 @@ export default function App() {
         element={
           <RequireSession>
             <NewTransactionPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/transactions/:transactionId/edit"
+        element={
+          <RequireSession>
+            <EditTransactionPage />
           </RequireSession>
         }
       />
