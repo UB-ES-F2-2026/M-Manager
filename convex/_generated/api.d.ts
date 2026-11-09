@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_dateRange from "../lib/dateRange.js";
+import type * as lib_ownership from "../lib/ownership.js";
 import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as transactions from "../transactions.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/auth": typeof lib_auth;
   "lib/dateRange": typeof lib_dateRange;
+  "lib/ownership": typeof lib_ownership;
   "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
   transactions: typeof transactions;

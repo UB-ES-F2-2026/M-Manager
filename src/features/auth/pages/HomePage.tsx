@@ -1,7 +1,9 @@
 import { useQuery } from "convex/react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
+import { PlusIcon } from "../../../components/ui/icons";
 import { selectRecentTransactions } from "../../transactions/selectRecentTransactions";
 import AccountList from "../components/AccountList";
 import BalanceCard from "../components/BalanceCard";
@@ -32,6 +34,13 @@ export default function HomePage() {
           totalCents={SAMPLE_TOTAL_BALANCE_CENTS}
           accountCount={SAMPLE_ACCOUNTS.length}
         />
+        <Link
+          to="/transactions/new"
+          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
+        >
+          <PlusIcon className="size-5" />
+          Afegir moviment
+        </Link>
         <HomeSection title="Els meus comptes" actionLabel="Veure'ls tots">
           <AccountList accounts={SAMPLE_ACCOUNTS} />
         </HomeSection>
