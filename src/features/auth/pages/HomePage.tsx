@@ -1,8 +1,11 @@
 import { useQuery } from "convex/react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
+import { PlusIcon } from "../../../components/ui/icons";
 import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
+import { selectRecentTransactions } from "../../transactions/selectRecentTransactions";
 import AccountList from "../components/AccountList";
 import BalanceCard from "../components/BalanceCard";
 import HomeHeader from "../components/HomeHeader";
@@ -10,18 +13,15 @@ import HomeSection from "../components/HomeSection";
 import MonthlySavingsCard from "../components/MonthlySavingsCard";
 import SessionLoading from "../components/SessionLoading";
 import TransactionList from "../components/TransactionList";
-import {
-  SAMPLE_ACCOUNTS,
-  SAMPLE_TOTAL_BALANCE_CENTS,
-  SAMPLE_TRANSACTIONS,
-} from "../homeSampleData";
+import { SAMPLE_ACCOUNTS, SAMPLE_TOTAL_BALANCE_CENTS } from "../homeSampleData";
 
 /**
- * Main screen. Monthly savings come from Convex (US2.4);
- * the total balance, accounts and recent movements are still sample data here.
+ * Main screen. Monthly savings (US2.4) and recent movements (US2.3) come from
+ * Convex; the total balance and accounts are still sample data for now.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
+  const transactions = useQuery(api.transactions.list, {});
   const [now] = useState(() => Date.now());
   const monthBounds = getMonthBounds(now);
   const savings = useQuery(api.transactions.monthlySavings, monthBounds);
@@ -50,11 +50,31 @@ export default function HomePage() {
             monthLabel={formatMonthLabel(now)}
           />
         )}
+        <Link
+          to="/transactions/new"
+          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
+        >
+          <PlusIcon className="size-5" />
+          Afegir moviment
+        </Link>
         <HomeSection title="Els meus comptes" actionLabel="Veure'ls tots">
           <AccountList accounts={SAMPLE_ACCOUNTS} />
         </HomeSection>
-        <HomeSection title="Últims moviments" actionLabel="Veure'ls tots">
-          <TransactionList transactions={SAMPLE_TRANSACTIONS} nowMs={now} />
+        <HomeSection
+          title="Últims moviments"
+          actionLabel="Veure'ls tots"
+          actionTo="/transactions"
+        >
+          {transactions === undefined ? (
+            <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+              Carregant…
+            </p>
+          ) : (
+            <TransactionList
+              transactions={selectRecentTransactions(transactions)}
+              nowMs={now}
+            />
+          )}
         </HomeSection>
       </main>
       <BottomNav />

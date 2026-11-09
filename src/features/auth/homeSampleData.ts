@@ -1,6 +1,6 @@
 /**
- * Sample data for the total balance, account list and recent movements.
- * Monthly savings come from Convex (US2.4); the total balance stays sample for now.
+ * Sample data still used by the balance card and account list on the home
+ * screen. Recent movements (US2.3) and monthly savings (US2.4) come from Convex.
  */
 
 export type SampleAccount = {
@@ -11,19 +11,6 @@ export type SampleAccount = {
   lastDigits: string;
   balanceCents: number;
 };
-
-export type SampleTransaction = {
-  id: string;
-  title: string;
-  bankName: string;
-  /** Timestamp in ms. */
-  date: number;
-  amountCents: number;
-  type: "expense" | "income";
-};
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const now = Date.now();
 
 export const SAMPLE_TOTAL_BALANCE_CENTS = 1248032;
 
@@ -51,32 +38,5 @@ export const SAMPLE_ACCOUNTS: SampleAccount[] = [
     kind: "Compte d'estalvi",
     lastDigits: "7730",
     balanceCents: 32770,
-  },
-];
-
-export const SAMPLE_TRANSACTIONS: SampleTransaction[] = [
-  {
-    id: "supermercat",
-    title: "Supermercat",
-    bankName: "Banc Nord",
-    date: now,
-    amountCents: 4290,
-    type: "expense",
-  },
-  {
-    id: "nomina",
-    title: "Nòmina",
-    bankName: "Caixa Sud",
-    date: now - 2 * DAY_MS,
-    amountCents: 185000,
-    type: "income",
-  },
-  {
-    id: "streaming",
-    title: "Subscripció streaming",
-    bankName: "NeoBank",
-    date: now - 3 * DAY_MS,
-    amountCents: 1299,
-    type: "expense",
   },
 ];
