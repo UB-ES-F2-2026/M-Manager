@@ -1,10 +1,9 @@
 import { Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import FormAlert from "../../../components/ui/FormAlert";
-import TextField from "../../../components/ui/TextField";
-import AssetTypeField from "../components/AssetTypeField";
+import NetWorthFormFields from "../components/NetWorthFormFields";
 import NetWorthKindToggle from "../components/NetWorthKindToggle";
-import { MAX_LABEL_LENGTH, useNetWorthForm } from "../hooks/useNetWorthForm";
+import { useNetWorthForm } from "../hooks/useNetWorthForm";
 
 /** US3.2: add an asset (what you own) or a debt (what you owe). */
 export default function NewNetWorthItemPage() {
@@ -31,48 +30,12 @@ export default function NewNetWorthItemPage() {
             onChange={(kind) => setField("kind", kind)}
             disabled={isSubmitting}
           />
-          <TextField
-            label={isAsset ? "Nom" : "Concepte"}
-            name="label"
-            autoComplete="off"
-            maxLength={MAX_LABEL_LENGTH}
-            placeholder={isAsset ? "Ex. Compte d'estalvi" : "Ex. Préstec del cotxe"}
-            value={fields.label}
-            onChange={(event) => setField("label", event.target.value)}
-            error={fieldErrors.label}
+          <NetWorthFormFields
+            fields={fields}
+            fieldErrors={fieldErrors}
             disabled={isSubmitting}
+            setField={setField}
           />
-          {isAsset && (
-            <AssetTypeField
-              value={fields.assetType}
-              onChange={(assetType) => setField("assetType", assetType)}
-              error={fieldErrors.assetType}
-              disabled={isSubmitting}
-            />
-          )}
-          <TextField
-            label={isAsset ? "Valor" : "Import pendent"}
-            name="amount"
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="0,00"
-            value={fields.amount}
-            onChange={(event) => setField("amount", event.target.value)}
-            error={fieldErrors.amount}
-            trailing={<span className="pr-3 text-sm text-slate-500">€</span>}
-            disabled={isSubmitting}
-          />
-          {!isAsset && (
-            <TextField
-              label="Data de venciment"
-              name="dueDate"
-              type="date"
-              value={fields.dueDate}
-              onChange={(event) => setField("dueDate", event.target.value)}
-              error={fieldErrors.dueDate}
-              disabled={isSubmitting}
-            />
-          )}
 
           <Button type="submit" loading={isSubmitting} className="mt-2">
             {isSubmitting ? "Desant…" : isAsset ? "Desar actiu" : "Desar deute"}
