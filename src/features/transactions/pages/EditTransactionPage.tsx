@@ -1,17 +1,19 @@
 import { useQuery } from "convex/react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import Button from "../../../components/ui/Button";
 import FormAlert from "../../../components/ui/FormAlert";
 import SessionLoading from "../../auth/components/SessionLoading";
+import DeleteTransactionButton from "../components/DeleteTransactionButton";
 import TransactionFormFields from "../components/TransactionFormFields";
 import { useTransactionForm } from "../hooks/useTransactionForm";
 
 /** US2.2: edit one of the user's transactions, reached at /transactions/:transactionId/edit. */
 export default function EditTransactionPage() {
   const { transactionId = "" } = useParams();
+  const navigate = useNavigate();
   const transaction = useQuery(api.transactions.get, { transactionId });
 
   if (transaction === undefined) {
@@ -31,7 +33,11 @@ export default function EditTransactionPage() {
 
   return (
     <EditLayout>
-      <EditTransactionForm transaction={transaction} />
+      {/* Navigates from here: deleting unmounts the form as soon as `get` returns null. */}
+      <EditTransactionForm
+        transaction={transaction}
+        onDeleted={() => navigate("/", { replace: true })}
+      />
     </EditLayout>
   );
 }
@@ -53,23 +59,32 @@ function EditLayout({ children }: { children: ReactNode }) {
 }
 
 /** Mounted only once the transaction has loaded, so the form starts filled in. */
-function EditTransactionForm({ transaction }: { transaction: Doc<"transactions"> }) {
+function EditTransactionForm({
+  transaction,
+  onDeleted,
+}: {
+  transaction: Doc<"transactions">;
+  onDeleted: () => void;
+}) {
   const { fields, errors, isSubmitting, setField, handleSubmit } = useTransactionForm(transaction);
   const { fieldErrors, alert } = errors;
 
   return (
-    <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {alert && <FormAlert title={alert.title} description={alert.description} />}
-      <TransactionFormFields
-        fields={fields}
-        fieldErrors={fieldErrors}
-        disabled={isSubmitting}
-        setField={setField}
-      />
+    <>
+      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {alert && <FormAlert title={alert.title} description={alert.description} />}
+        <TransactionFormFields
+          fields={fields}
+          fieldErrors={fieldErrors}
+          disabled={isSubmitting}
+          setField={setField}
+        />
 
-      <Button type="submit" loading={isSubmitting} className="mt-2">
-        {isSubmitting ? "Desant…" : "Desar canvis"}
-      </Button>
-    </form>
+        <Button type="submit" loading={isSubmitting} className="mt-2">
+          {isSubmitting ? "Desant…" : "Desar canvis"}
+        </Button>
+      </form>
+      <DeleteTransactionButton transactionId={transaction._id} onDeleted={onDeleted} />
+    </>
   );
 }
