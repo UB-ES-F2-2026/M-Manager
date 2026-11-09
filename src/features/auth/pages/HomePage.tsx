@@ -2,10 +2,12 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
+import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
 import AccountList from "../components/AccountList";
 import BalanceCard from "../components/BalanceCard";
 import HomeHeader from "../components/HomeHeader";
 import HomeSection from "../components/HomeSection";
+import MonthlySavingsCard from "../components/MonthlySavingsCard";
 import SessionLoading from "../components/SessionLoading";
 import TransactionList from "../components/TransactionList";
 import {
@@ -15,12 +17,14 @@ import {
 } from "../homeSampleData";
 
 /**
- * Static main screen (US1.2). Only the user's name is real; balances,
- * accounts and transactions are sample data from homeSampleData.ts.
+ * Main screen. Monthly savings come from Convex (US2.4);
+ * the total balance, accounts and recent movements are still sample data here.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
   const [now] = useState(() => Date.now());
+  const monthBounds = getMonthBounds(now);
+  const savings = useQuery(api.transactions.monthlySavings, monthBounds);
 
   if (!user) {
     return <SessionLoading />;
@@ -34,6 +38,18 @@ export default function HomePage() {
           totalCents={SAMPLE_TOTAL_BALANCE_CENTS}
           accountCount={SAMPLE_ACCOUNTS.length}
         />
+        {savings === undefined ? (
+          <section className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white px-5 py-4">
+            <h2 className="text-sm text-slate-500">Estalvi del mes</h2>
+            <p className="text-2xl font-bold text-slate-400">Carregant…</p>
+            <p className="text-xs text-slate-500">{formatMonthLabel(now)}</p>
+          </section>
+        ) : (
+          <MonthlySavingsCard
+            savingsCents={savings.savingsCents}
+            monthLabel={formatMonthLabel(now)}
+          />
+        )}
         <HomeSection title="Els meus comptes" actionLabel="Veure'ls tots">
           <AccountList accounts={SAMPLE_ACCOUNTS} />
         </HomeSection>

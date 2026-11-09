@@ -1,7 +1,6 @@
 /**
- * Sample data for the static main screen (US1.2).
- * Replace it with Convex queries once accounts and transactions exist (US2.x);
- * the total balance must then come from the backend, not from summing here.
+ * Sample data for the total balance, account list and recent movements.
+ * Monthly savings come from Convex (US2.4); the total balance stays sample for now.
  */
 
 export type SampleAccount = {
