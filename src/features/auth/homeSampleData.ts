@@ -1,6 +1,6 @@
 /**
  * Sample data still used by the balance card and account list on the home
- * screen. Recent movements already come from Convex (US2.3).
+ * screen. Recent movements (US2.3) and monthly savings (US2.4) come from Convex.
  */
 
 export type SampleAccount = {
