@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
 import { PlusIcon } from "../../../components/ui/icons";
-import AccountList from "../components/AccountList";
+import NetWorthList from "../../net-worth/components/NetWorthList";
 import BalanceCard from "../components/BalanceCard";
 import HomeHeader from "../components/HomeHeader";
 import HomeSection from "../components/HomeSection";
@@ -17,11 +17,12 @@ import {
 } from "../homeSampleData";
 
 /**
- * Static main screen (US1.2). Only the user's name is real; balances,
- * accounts and transactions are sample data from homeSampleData.ts.
+ * Main screen. Assets and debts come from Convex (US3.2);
+ * the balance card and recent movements are still sample data for now.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
+  const netWorth = useQuery(api.netWorth.list);
   const [now] = useState(() => Date.now());
 
   if (!user) {
@@ -36,8 +37,14 @@ export default function HomePage() {
           totalCents={SAMPLE_TOTAL_BALANCE_CENTS}
           accountCount={SAMPLE_ACCOUNTS.length}
         />
-        <HomeSection title="Els meus comptes" actionLabel="Veure'ls tots">
-          <AccountList accounts={SAMPLE_ACCOUNTS} />
+        <HomeSection title="Actius i deutes" actionLabel="Veure'ls tots">
+          {netWorth === undefined ? (
+            <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+              Carregant…
+            </p>
+          ) : (
+            <NetWorthList assets={netWorth.assets} debts={netWorth.debts} />
+          )}
         </HomeSection>
         <Link
           to="/net-worth/new"
