@@ -10,8 +10,14 @@
 
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as lib_assetTypes from "../lib/assetTypes.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_dateRange from "../lib/dateRange.js";
+import type * as lib_ownership from "../lib/ownership.js";
+import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as netWorth from "../netWorth.js";
+import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -23,8 +29,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
+  "lib/assetTypes": typeof lib_assetTypes;
   "lib/auth": typeof lib_auth;
+  "lib/dateRange": typeof lib_dateRange;
+  "lib/ownership": typeof lib_ownership;
+  "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
+  netWorth: typeof netWorth;
+  transactions: typeof transactions;
   users: typeof users;
 }>;
 
