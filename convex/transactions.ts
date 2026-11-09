@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { requireAuthUserId } from "./lib/auth";
 import { requireOwnedDocument } from "./lib/ownership";
 import { transactionCategoryValidator } from "./lib/transactionCategories";
@@ -67,5 +67,26 @@ export const remove = mutation({
     await requireOwnedDocument(ctx, userId, transactionId, NOT_FOUND_MESSAGE);
 
     await ctx.db.delete(transactionId);
+  },
+});
+
+/**
+ * One of the signed-in user's transactions, to fill the edit form (US2.2).
+ * Returns null when the id is malformed, missing or another user's, so the
+ * screen can show "not found" without revealing which case it was.
+ */
+export const get = query({
+  args: { transactionId: v.string() },
+  handler: async (ctx, { transactionId }) => {
+    const userId = await requireAuthUserId(ctx);
+    const id = ctx.db.normalizeId("transactions", transactionId);
+    if (id === null) {
+      return null;
+    }
+    const transaction = await ctx.db.get(id);
+    if (transaction === null || transaction.userId !== userId) {
+      return null;
+    }
+    return transaction;
   },
 });
