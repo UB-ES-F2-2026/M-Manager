@@ -4,9 +4,9 @@ import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
 import { PlusIcon } from "../../../components/ui/icons";
+import NetWorthList from "../../net-worth/components/NetWorthList";
 import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
 import { selectRecentTransactions } from "../../transactions/selectRecentTransactions";
-import AccountList from "../components/AccountList";
 import BalanceCard from "../components/BalanceCard";
 import HomeHeader from "../components/HomeHeader";
 import HomeSection from "../components/HomeSection";
@@ -16,12 +16,13 @@ import TransactionList from "../components/TransactionList";
 import { SAMPLE_ACCOUNTS, SAMPLE_TOTAL_BALANCE_CENTS } from "../homeSampleData";
 
 /**
- * Main screen. Monthly savings (US2.4) and recent movements (US2.3) come from
- * Convex; the total balance and accounts are still sample data for now.
+ * Main screen. Monthly savings (US2.4), recent movements (US2.3) and assets /
+ * debts (US3.2) come from Convex; the total balance is still sample data for now.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
   const transactions = useQuery(api.transactions.list, {});
+  const netWorth = useQuery(api.netWorth.list);
   const [now] = useState(() => Date.now());
   const monthBounds = getMonthBounds(now);
   const savings = useQuery(api.transactions.monthlySavings, monthBounds);
@@ -57,9 +58,22 @@ export default function HomePage() {
           <PlusIcon className="size-5" />
           Afegir moviment
         </Link>
-        <HomeSection title="Els meus comptes" actionLabel="Veure'ls tots">
-          <AccountList accounts={SAMPLE_ACCOUNTS} />
+        <HomeSection title="Actius i deutes" actionLabel="Veure'ls tots">
+          {netWorth === undefined ? (
+            <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+              Carregant…
+            </p>
+          ) : (
+            <NetWorthList assets={netWorth.assets} debts={netWorth.debts} />
+          )}
         </HomeSection>
+        <Link
+          to="/net-worth/new"
+          className="-mt-3 flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-sm font-medium text-primary"
+        >
+          <PlusIcon className="size-4" />
+          Afegir un actiu o un deute
+        </Link>
         <HomeSection
           title="Últims moviments"
           actionLabel="Veure'ls tots"
