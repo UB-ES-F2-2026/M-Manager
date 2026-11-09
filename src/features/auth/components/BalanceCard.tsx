@@ -1,23 +1,19 @@
 import { formatMoney } from "../../../lib/money";
 
 type BalanceCardProps = {
-  /** Income − expenses for the current month (can be negative). */
-  savingsCents: number;
-  /** e.g. "Novembre de 2026". */
-  monthLabel: string;
+  totalCents: number;
+  accountCount: number;
 };
 
-/** Blue card with the signed-in user's monthly savings (US2.4). */
-export default function BalanceCard({ savingsCents, monthLabel }: BalanceCardProps) {
-  const isNegative = savingsCents < 0;
-
+/** Blue "Saldo total" card at the top of the main screen. */
+export default function BalanceCard({ totalCents, accountCount }: BalanceCardProps) {
   return (
     <section className="flex flex-col gap-1 rounded-2xl bg-primary px-5 py-5 text-white">
-      <h2 className="text-sm text-white/80">Estalvi del mes</h2>
-      <p className={`text-3xl font-bold ${isNegative ? "text-red-200" : ""}`}>
-        {formatMoney(savingsCents)}
+      <h2 className="text-sm text-white/80">Saldo total</h2>
+      <p className="text-3xl font-bold">{formatMoney(totalCents)}</p>
+      <p className="text-xs text-white/75">
+        {accountCount} comptes connectats · Actualitzat fa 2 min
       </p>
-      <p className="text-xs text-white/75">{monthLabel}</p>
     </section>
   );
 }
