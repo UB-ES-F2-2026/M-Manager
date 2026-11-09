@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_NAME_LENGTH = 20;
+const MAX_CONCEPT_LENGTH = 80;
 const MIN_PASSWORD_LENGTH = 8;
 const HAS_UPPERCASE = /[A-Z]/;
 const HAS_DIGIT = /\d/;
@@ -117,4 +118,47 @@ export function validateSignUpProfile(params: {
     email: assertValidEmail(params.email),
     name: assertValidName(params.name),
   };
+}
+
+export type TransactionErrorCode =
+  | "INVALID_AMOUNT"
+  | "INVALID_DATE"
+  | "INVALID_CONCEPT";
+
+/** Amounts are stored as positive integer cents (README §6). */
+export function assertValidAmountCents(amountCents: number): void {
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    throw new ConvexError({
+      code: "INVALID_AMOUNT" satisfies TransactionErrorCode,
+      message: "L'import ha de ser més gran que zero.",
+    });
+  }
+}
+
+/** Requires an integer timestamp in ms that JavaScript can represent as a date. */
+export function assertValidDate(date: number): void {
+  if (!Number.isInteger(date) || Number.isNaN(new Date(date).getTime())) {
+    throw new ConvexError({
+      code: "INVALID_DATE" satisfies TransactionErrorCode,
+      message: "La data no és vàlida.",
+    });
+  }
+}
+
+/** Rejects blank concepts and concepts longer than MAX_CONCEPT_LENGTH; returns the trimmed text. */
+export function assertValidConcept(concept: string): string {
+  const trimmed = concept.trim();
+  if (trimmed.length < 1) {
+    throw new ConvexError({
+      code: "INVALID_CONCEPT" satisfies TransactionErrorCode,
+      message: "El concepte és obligatori.",
+    });
+  }
+  if (trimmed.length > MAX_CONCEPT_LENGTH) {
+    throw new ConvexError({
+      code: "INVALID_CONCEPT" satisfies TransactionErrorCode,
+      message: "El concepte és massa llarg.",
+    });
+  }
+  return trimmed;
 }

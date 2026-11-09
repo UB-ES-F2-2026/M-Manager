@@ -6,6 +6,9 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
+import EditTransactionPage from "./features/transactions/pages/EditTransactionPage";
+import NewTransactionPage from "./features/transactions/pages/NewTransactionPage";
+import TransactionHistoryPage from "./features/transactions/pages/TransactionHistoryPage";
 
 export default function App() {
   return (
@@ -32,6 +35,30 @@ export default function App() {
           <RedirectIfSignedIn>
             <RegisterPage />
           </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/transactions"
+        element={
+          <RequireSession>
+            <TransactionHistoryPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/transactions/new"
+        element={
+          <RequireSession>
+            <NewTransactionPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/transactions/:transactionId/edit"
+        element={
+          <RequireSession>
+            <EditTransactionPage />
+          </RequireSession>
         }
       />
       <Route
