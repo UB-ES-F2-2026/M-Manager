@@ -6,6 +6,7 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import EditTransactionPage from "./features/transactions/pages/EditTransactionPage";
 import NewTransactionPage from "./features/transactions/pages/NewTransactionPage";
+import TransactionHistoryPage from "./features/transactions/pages/TransactionHistoryPage";
 
 export default function App() {
   return (
@@ -32,6 +33,14 @@ export default function App() {
           <RedirectIfSignedIn>
             <RegisterPage />
           </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/transactions"
+        element={
+          <RequireSession>
+            <TransactionHistoryPage />
+          </RequireSession>
         }
       />
       <Route
