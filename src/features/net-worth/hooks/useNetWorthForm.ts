@@ -3,8 +3,9 @@ import { ConvexError } from "convex/values";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 import { ASSET_TYPES, type AssetType } from "../../../../convex/lib/assetTypes";
-import { parseMoney } from "../../../lib/money";
+import { parseMoney, toAmountInputValue } from "../../../lib/money";
 
 /** Same limit as MAX_LABEL_LENGTH in convex/netWorth.ts. */
 export const MAX_LABEL_LENGTH = 80;
@@ -38,7 +39,18 @@ export const SAVE_ERROR_ALERT: FormAlertMessage = {
   description: "Torna-ho a provar d'aquí a una estona.",
 };
 
+/** Shown when saving an edit fails because the item was deleted meanwhile. */
+export const NOT_FOUND_ALERT: FormAlertMessage = {
+  title: "No s'ha trobat",
+  description: "Potser s'ha eliminat. Torna a la pantalla principal.",
+};
+
 export type NetWorthKind = "asset" | "debt";
+
+/** The stored asset or debt that the edit screen starts from. */
+export type NetWorthItem =
+  | { kind: "asset"; asset: Doc<"assets"> }
+  | { kind: "debt"; debt: Doc<"debts"> };
 
 /** Raw form values, as the user types them. */
 export type NetWorthFields = {
@@ -88,6 +100,34 @@ export function parseDueDateInput(value: string): number | null {
     return null;
   }
   return date.getTime();
+}
+
+/** Inverse of parseDueDateInput: the local day of a timestamp as "YYYY-MM-DD". */
+export function toDueDateInputValue(timestamp: number): string {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** Form values that show a stored asset or debt as the user would have typed it. */
+export function itemToFields(item: NetWorthItem): NetWorthFields {
+  if (item.kind === "asset") {
+    return {
+      kind: "asset",
+      label: item.asset.name,
+      assetType: item.asset.type,
+      amount: toAmountInputValue(item.asset.amountCents),
+      dueDate: "",
+    };
+  }
+  return {
+    kind: "debt",
+    label: item.debt.concept,
+    assetType: "",
+    amount: toAmountInputValue(item.debt.amountCents),
+    dueDate: toDueDateInputValue(item.debt.dueDate),
+  };
 }
 
 function isAssetType(value: string): value is AssetType {
@@ -171,9 +211,12 @@ const FIELD_BY_ERROR_CODE: Record<string, ValidatedField> = {
   INVALID_DUE_DATE: "dueDate",
 };
 
-/** Turns an error from createAsset or createDebt into messages for the form. */
+/** Turns an error from a create or update mutation into messages for the form. */
 export function getNetWorthErrors(error: unknown): NetWorthErrors {
   if (error instanceof ConvexError && isCodedError(error.data)) {
+    if (error.data.code === "NOT_FOUND") {
+      return { fieldErrors: {}, alert: NOT_FOUND_ALERT };
+    }
     const field = FIELD_BY_ERROR_CODE[error.data.code];
     if (field) {
       return { fieldErrors: { [field]: error.data.message } };
@@ -182,12 +225,19 @@ export function getNetWorthErrors(error: unknown): NetWorthErrors {
   return { fieldErrors: {}, alert: SAVE_ERROR_ALERT };
 }
 
-/** Form state and submit logic for the new asset or debt screen (US3.2). */
-export function useNetWorthForm() {
+/**
+ * Form state and submit logic for the new and edit asset or debt screens (US3.2).
+ * With `item` the form starts filled in and saving updates it instead of creating.
+ */
+export function useNetWorthForm(item?: NetWorthItem) {
   const createAsset = useMutation(api.netWorth.createAsset);
   const createDebt = useMutation(api.netWorth.createDebt);
+  const updateAsset = useMutation(api.netWorth.updateAsset);
+  const updateDebt = useMutation(api.netWorth.updateDebt);
   const navigate = useNavigate();
-  const [fields, setFields] = useState<NetWorthFields>(EMPTY_NET_WORTH_FIELDS);
+  const [fields, setFields] = useState<NetWorthFields>(() =>
+    item ? itemToFields(item) : EMPTY_NET_WORTH_FIELDS,
+  );
   const [errors, setErrors] = useState<NetWorthErrors>({ fieldErrors: {} });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -213,7 +263,13 @@ export function useNetWorthForm() {
     setIsSubmitting(true);
     try {
       if (request.kind === "asset") {
-        await createAsset(request.args);
+        if (item?.kind === "asset") {
+          await updateAsset({ assetId: item.asset._id, ...request.args });
+        } else {
+          await createAsset(request.args);
+        }
+      } else if (item?.kind === "debt") {
+        await updateDebt({ debtId: item.debt._id, ...request.args });
       } else {
         await createDebt(request.args);
       }

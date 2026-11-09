@@ -4,6 +4,7 @@ import RequireSession from "./features/auth/components/RequireSession";
 import HomePage from "./features/auth/pages/HomePage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
 
 export default function App() {
@@ -38,6 +39,22 @@ export default function App() {
         element={
           <RequireSession>
             <NewNetWorthItemPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/net-worth/assets/:itemId/edit"
+        element={
+          <RequireSession>
+            <EditNetWorthItemPage kind="asset" />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/net-worth/debts/:itemId/edit"
+        element={
+          <RequireSession>
+            <EditNetWorthItemPage kind="debt" />
           </RequireSession>
         }
       />

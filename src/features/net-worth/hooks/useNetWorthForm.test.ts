@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { ASSET_TYPES } from "../../../../convex/lib/assetTypes";
 import { ASSET_TYPE_LABELS } from "../assetTypeLabels";
 import {
@@ -7,13 +8,16 @@ import {
   getNetWorthErrors,
   INVALID_AMOUNT_FORMAT_MESSAGE,
   INVALID_DUE_DATE_MESSAGE,
+  itemToFields,
   LABEL_MESSAGES,
   MAX_LABEL_LENGTH,
   MISSING_ASSET_TYPE_MESSAGE,
+  NOT_FOUND_ALERT,
   parseDueDateInput,
   parseNetWorthFields,
   REQUIRED_FIELD_MESSAGE,
   SAVE_ERROR_ALERT,
+  toDueDateInputValue,
   ZERO_AMOUNT_MESSAGE,
   type NetWorthFields,
 } from "./useNetWorthForm";
@@ -142,6 +146,87 @@ describe("getNetWorthErrors", () => {
       fieldErrors: {},
       alert: SAVE_ERROR_ALERT,
     });
+  });
+
+  it("tells the user the item no longer exists when an edit gets NOT_FOUND", () => {
+    expect(
+      getNetWorthErrors(
+        new ConvexError({ code: "NOT_FOUND", message: "No s'ha trobat aquest actiu." }),
+      ),
+    ).toEqual({ fieldErrors: {}, alert: NOT_FOUND_ALERT });
+  });
+});
+
+// US3.2 AC3 · Edit screens: filling the form from a stored asset or debt.
+
+const USER_ID = "user1" as Id<"users">;
+
+const STORED_ASSET: Doc<"assets"> = {
+  _id: "asset1" as Id<"assets">,
+  _creationTime: 0,
+  userId: USER_ID,
+  name: "Compte d'estalvi",
+  type: "bankAccount",
+  amountCents: 325075,
+};
+
+const STORED_DEBT: Doc<"debts"> = {
+  _id: "debt1" as Id<"debts">,
+  _creationTime: 0,
+  userId: USER_ID,
+  concept: "Préstec del cotxe",
+  amountCents: 450000,
+  dueDate: new Date(2027, 5, 30).getTime(),
+};
+
+describe("toDueDateInputValue", () => {
+  it("writes the local day of a timestamp as YYYY-MM-DD", () => {
+    expect(toDueDateInputValue(new Date(2027, 5, 30).getTime())).toBe("2027-06-30");
+    expect(toDueDateInputValue(new Date(2027, 0, 5, 18, 30).getTime())).toBe("2027-01-05");
+  });
+
+  it("gives back the same day when parsed again", () => {
+    const dueDate = new Date(2026, 11, 31).getTime();
+    expect(parseDueDateInput(toDueDateInputValue(dueDate))).toBe(dueDate);
+  });
+});
+
+describe("itemToFields", () => {
+  it("fills the asset fields and leaves the due date empty", () => {
+    expect(itemToFields({ kind: "asset", asset: STORED_ASSET })).toEqual({
+      kind: "asset",
+      label: "Compte d'estalvi",
+      assetType: "bankAccount",
+      amount: "3250,75",
+      dueDate: "",
+    });
+  });
+
+  it("fills the debt fields and leaves the asset type empty", () => {
+    expect(itemToFields({ kind: "debt", debt: STORED_DEBT })).toEqual({
+      kind: "debt",
+      label: "Préstec del cotxe",
+      assetType: "",
+      amount: "4500,00",
+      dueDate: "2027-06-30",
+    });
+  });
+
+  it("saves the same values when the user changes nothing", () => {
+    expect(parseNetWorthFields(itemToFields({ kind: "asset", asset: STORED_ASSET })).request)
+      .toEqual({
+        kind: "asset",
+        args: { name: "Compte d'estalvi", type: "bankAccount", amountCents: 325075 },
+      });
+    expect(parseNetWorthFields(itemToFields({ kind: "debt", debt: STORED_DEBT })).request)
+      .toEqual({
+        kind: "debt",
+        args: {
+          concept: "Préstec del cotxe",
+          amountCents: 450000,
+          dueDate: STORED_DEBT.dueDate,
+        },
+      });
   });
 });
 

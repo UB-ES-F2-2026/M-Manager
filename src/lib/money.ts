@@ -12,6 +12,14 @@ export function formatSignedMoney(amountCents: number, type: "expense" | "income
 }
 
 /**
+ * Cents as an amount field value that parseMoney accepts back (185000 → "1850,00").
+ * No thousands separator: parseMoney rejects "1.850,00".
+ */
+export function toAmountInputValue(amountCents: number): string {
+  return (amountCents / 100).toFixed(2).replace(".", ",");
+}
+
+/**
  * Parses user input into positive integer cents.
  * Returns null when the text is not a valid amount.
  */

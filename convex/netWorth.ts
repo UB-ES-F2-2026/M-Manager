@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { assetTypeValidator } from "./lib/assetTypes";
 import { requireAuthUserId } from "./lib/auth";
 import { requireOwnedDocument } from "./lib/ownership";
@@ -91,6 +92,39 @@ export const list = query({
 
     return { assets, debts };
   },
+});
+
+/**
+ * The caller's asset or debt with this id, or null when the id is malformed,
+ * belongs to another table, was deleted or is someone else's.
+ */
+async function getOwnedOrNull<TableName extends "assets" | "debts">(
+  ctx: QueryCtx,
+  table: TableName,
+  rawId: string,
+): Promise<Doc<TableName> | null> {
+  const userId = await requireAuthUserId(ctx);
+  const id = ctx.db.normalizeId(table, rawId);
+  if (id === null) {
+    return null;
+  }
+  const document = await ctx.db.get(id);
+  if (document === null || document.userId !== userId) {
+    return null;
+  }
+  return document;
+}
+
+/** Loads one asset into the edit screen (US3.2 AC3). The id comes from the URL. */
+export const getAsset = query({
+  args: { assetId: v.string() },
+  handler: async (ctx, { assetId }) => getOwnedOrNull(ctx, "assets", assetId),
+});
+
+/** Loads one debt into the edit screen (US3.2 AC3). The id comes from the URL. */
+export const getDebt = query({
+  args: { debtId: v.string() },
+  handler: async (ctx, { debtId }) => getOwnedOrNull(ctx, "debts", debtId),
 });
 
 /** Creates an asset for the signed-in user (US3.2 AC1). */
