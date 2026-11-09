@@ -3,10 +3,18 @@ import type { ButtonHTMLAttributes } from "react";
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Shows a spinner and disables the button while an action is running. */
   loading?: boolean;
+  /** "danger" for destructive actions such as deleting. */
+  variant?: "primary" | "danger";
+};
+
+const VARIANT_CLASSES = {
+  primary: "bg-primary",
+  danger: "bg-danger",
 };
 
 export default function Button({
   loading = false,
+  variant = "primary",
   disabled,
   className = "",
   children,
@@ -18,7 +26,7 @@ export default function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading}
-      className={`flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`flex w-full items-center justify-center gap-2 rounded-lg ${VARIANT_CLASSES[variant]} px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       {...props}
     >
       {loading && (
