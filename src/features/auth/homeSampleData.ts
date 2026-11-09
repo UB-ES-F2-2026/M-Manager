@@ -1,7 +1,6 @@
 /**
- * Sample data for the static main screen (US1.2).
- * Replace it with Convex queries once accounts and transactions exist (US2.x);
- * the total balance must then come from the backend, not from summing here.
+ * Sample data still used by the account list and recent movements on this
+ * story branch. Monthly savings already come from Convex (US2.4).
  */
 
 export type SampleAccount = {
@@ -25,8 +24,6 @@ export type SampleTransaction = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const now = Date.now();
-
-export const SAMPLE_TOTAL_BALANCE_CENTS = 1248032;
 
 export const SAMPLE_ACCOUNTS: SampleAccount[] = [
   {
