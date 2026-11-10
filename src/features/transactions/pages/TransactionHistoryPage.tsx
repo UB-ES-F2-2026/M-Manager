@@ -61,7 +61,7 @@ export default function TransactionHistoryPage() {
               <h2 className="text-sm font-semibold text-slate-500">
                 {formatRelativeDay(day.dayStartMs, now)}
               </h2>
-              <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+              <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                 {day.transactions.map((transaction) => (
                   <TransactionHistoryItem key={transaction._id} transaction={transaction} />
                 ))}
