@@ -3,37 +3,24 @@ import { Link } from "react-router-dom";
 
 type HomeSectionProps = {
   title: string;
-  /** Text of the "see all" control. */
-  actionLabel: string;
-  /** When set, the action navigates here; otherwise it stays disabled. */
-  actionTo?: string;
+  /**
+   * "See all" link of the section. Only pass it when its screen exists:
+   * a control without functionality must not be shown.
+   */
+  action?: { label: string; to: string };
   children: ReactNode;
 };
 
-/** Titled block of the main screen ("Els meus comptes", "Últims moviments"). */
-export default function HomeSection({
-  title,
-  actionLabel,
-  actionTo,
-  children,
-}: HomeSectionProps) {
+/** Titled block of the main screen ("Actius i deutes", "Últims moviments"). */
+export default function HomeSection({ title, action, children }: HomeSectionProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        {actionTo ? (
-          <Link to={actionTo} className="text-sm font-medium text-primary">
-            {actionLabel}
+        {action && (
+          <Link to={action.to} className="text-sm font-medium text-primary">
+            {action.label}
           </Link>
-        ) : (
-          <button
-            type="button"
-            disabled
-            title="Properament"
-            className="text-sm font-medium text-primary disabled:cursor-not-allowed"
-          >
-            {actionLabel}
-          </button>
         )}
       </div>
       {children}

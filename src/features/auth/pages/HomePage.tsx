@@ -58,7 +58,7 @@ export default function HomePage() {
           <PlusIcon className="size-5" />
           Afegir moviment
         </Link>
-        <HomeSection title="Actius i deutes" actionLabel="Veure'ls tots">
+        <HomeSection title="Actius i deutes">
           {netWorth === undefined ? (
             <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
               Carregant…
@@ -76,8 +76,7 @@ export default function HomePage() {
         </Link>
         <HomeSection
           title="Últims moviments"
-          actionLabel="Veure'ls tots"
-          actionTo="/transactions"
+          action={{ label: "Veure'ls tots", to: "/transactions" }}
         >
           {transactions === undefined ? (
             <p className="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
