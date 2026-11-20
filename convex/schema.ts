@@ -2,12 +2,13 @@ import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { assetTypeValidator } from "./lib/assetTypes";
+import { budgetCategoryValidator } from "./lib/budgetCategories";
 import { transactionCategoryValidator } from "./lib/transactionCategories";
 
 /**
  * Database schema (source of truth).
  * Auth tables + user profile fields (name, email) + transactions (US2.1)
- * + assets and debts (US3.2).
+ * + assets and debts (US3.2) + budgets (US3.1).
  */
 export default defineSchema({
   ...authTables,
@@ -63,4 +64,16 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_dueDate", ["userId", "dueDate"]),
+
+  /**
+   * Monthly spending limit for one expense category, owned by a single user (US3.1).
+   * At most one budget per (userId, category): enforced in the mutations using
+   * the `by_user_and_category` index, which also serves "all budgets of a user".
+   * The limit is always positive cents in `amountCents`.
+   */
+  budgets: defineTable({
+    userId: v.id("users"),
+    category: budgetCategoryValidator,
+    amountCents: v.number(),
+  }).index("by_user_and_category", ["userId", "category"]),
 });
