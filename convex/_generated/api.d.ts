@@ -9,9 +9,11 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as budgets from "../budgets.js";
 import type * as http from "../http.js";
 import type * as lib_assetTypes from "../lib/assetTypes.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_budgetCategories from "../lib/budgetCategories.js";
 import type * as lib_dateRange from "../lib/dateRange.js";
 import type * as lib_ownership from "../lib/ownership.js";
 import type * as lib_transactionCategories from "../lib/transactionCategories.js";
@@ -28,9 +30,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  budgets: typeof budgets;
   http: typeof http;
   "lib/assetTypes": typeof lib_assetTypes;
   "lib/auth": typeof lib_auth;
+  "lib/budgetCategories": typeof lib_budgetCategories;
   "lib/dateRange": typeof lib_dateRange;
   "lib/ownership": typeof lib_ownership;
   "lib/transactionCategories": typeof lib_transactionCategories;
