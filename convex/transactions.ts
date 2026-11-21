@@ -3,6 +3,12 @@ import { mutation, query } from "./_generated/server";
 import { requireAuthUserId } from "./lib/auth";
 import { assertValidDateRange } from "./lib/dateRange";
 import { requireOwnedDocument } from "./lib/ownership";
+import { recurrenceInputValidator } from "./lib/recurrenceFrequencies";
+import {
+  deleteRuleForSourceTransaction,
+  syncRuleSnapshotForTransaction,
+  upsertRuleForTransaction,
+} from "./lib/recurringRules";
 import { transactionCategoryValidator } from "./lib/transactionCategories";
 import {
   assertValidAmountCents,
@@ -19,6 +25,16 @@ const transactionFields = {
   date: v.number(),
   category: transactionCategoryValidator,
   concept: v.string(),
+};
+
+/**
+ * Optional recurrence from the transaction form (US2.5).
+ * - omit / undefined: leave recurrence unchanged (create = no rule)
+ * - object: create or update the rule
+ * - null (update only): remove the rule without deleting past movements
+ */
+const recurrenceArg = {
+  recurrence: v.optional(v.union(recurrenceInputValidator, v.null())),
 };
 
 /** Validates the user's fields and returns them ready to store (trimmed concept). */
@@ -111,29 +127,62 @@ export const monthlySavings = query({
   },
 });
 
-/** Registers an income or expense for the signed-in user (US2.1). */
+/** Registers an income or expense for the signed-in user (US2.1 / US2.5). */
 export const create = mutation({
-  args: transactionFields,
-  handler: async (ctx, args) => {
+  args: {
+    ...transactionFields,
+    ...recurrenceArg,
+  },
+  handler: async (ctx, { recurrence, ...args }) => {
     const userId = await requireAuthUserId(ctx);
     const fields = validateTransactionFields(args);
 
-    return await ctx.db.insert("transactions", { userId, ...fields });
+    const transactionId = await ctx.db.insert("transactions", {
+      userId,
+      ...fields,
+    });
+
+    if (recurrence) {
+      await upsertRuleForTransaction(ctx, {
+        userId,
+        sourceTransactionId: transactionId,
+        snapshot: fields,
+        recurrence,
+        sourceDateMs: fields.date,
+      });
+    }
+
+    return transactionId;
   },
 });
 
-/** Edits one of the signed-in user's transactions (US2.2). */
+/** Edits one of the signed-in user's transactions (US2.2 / US2.5). */
 export const update = mutation({
   args: {
     transactionId: v.id("transactions"),
     ...transactionFields,
+    ...recurrenceArg,
   },
-  handler: async (ctx, { transactionId, ...args }) => {
+  handler: async (ctx, { transactionId, recurrence, ...args }) => {
     const userId = await requireAuthUserId(ctx);
     await requireOwnedDocument(ctx, userId, transactionId, NOT_FOUND_MESSAGE);
     const fields = validateTransactionFields(args);
 
     await ctx.db.patch(transactionId, fields);
+
+    if (recurrence === null) {
+      await deleteRuleForSourceTransaction(ctx, transactionId);
+    } else if (recurrence !== undefined) {
+      await upsertRuleForTransaction(ctx, {
+        userId,
+        sourceTransactionId: transactionId,
+        snapshot: fields,
+        recurrence,
+        sourceDateMs: fields.date,
+      });
+    } else {
+      await syncRuleSnapshotForTransaction(ctx, transactionId, fields);
+    }
   },
 });
 
@@ -144,6 +193,7 @@ export const remove = mutation({
     const userId = await requireAuthUserId(ctx);
     await requireOwnedDocument(ctx, userId, transactionId, NOT_FOUND_MESSAGE);
 
+    await deleteRuleForSourceTransaction(ctx, transactionId);
     await ctx.db.delete(transactionId);
   },
 });

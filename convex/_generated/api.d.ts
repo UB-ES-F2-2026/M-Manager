@@ -14,9 +14,12 @@ import type * as lib_assetTypes from "../lib/assetTypes.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_dateRange from "../lib/dateRange.js";
 import type * as lib_ownership from "../lib/ownership.js";
+import type * as lib_recurrenceFrequencies from "../lib/recurrenceFrequencies.js";
+import type * as lib_recurringRules from "../lib/recurringRules.js";
 import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as netWorth from "../netWorth.js";
+import type * as recurring from "../recurring.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
@@ -33,9 +36,12 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/dateRange": typeof lib_dateRange;
   "lib/ownership": typeof lib_ownership;
+  "lib/recurrenceFrequencies": typeof lib_recurrenceFrequencies;
+  "lib/recurringRules": typeof lib_recurringRules;
   "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
   netWorth: typeof netWorth;
+  recurring: typeof recurring;
   transactions: typeof transactions;
   users: typeof users;
 }>;
