@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { requireAuthUserId } from "./lib/auth";
+import { assertValidDateRange } from "./lib/dateRange";
+import { expandUpcomingPayments } from "./lib/recurringOccurrences";
 import { findRuleBySourceTransaction } from "./lib/recurringRules";
 
 /**
@@ -31,5 +33,30 @@ export const forTransaction = query({
       dayOfMonth: rule.dayOfMonth,
       monthOfYear: rule.monthOfYear,
     };
+  },
+});
+
+/**
+ * Pending occurrences of the caller's recurring rules in the next window
+ * (US2.5 AC2). Sorted ascending by date.
+ *
+ * `rangeStart` / `rangeEnd` are inclusive UTC midnights for the civil days of
+ * the user's local calendar (client builds them, like month bounds in US2.4).
+ */
+export const upcomingPayments = query({
+  args: {
+    rangeStart: v.number(),
+    rangeEnd: v.number(),
+  },
+  handler: async (ctx, { rangeStart, rangeEnd }) => {
+    const userId = await requireAuthUserId(ctx);
+    assertValidDateRange(rangeStart, rangeEnd);
+
+    const rules = await ctx.db
+      .query("recurringTransactions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    return expandUpcomingPayments(rules, rangeStart, rangeEnd);
   },
 });

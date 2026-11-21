@@ -15,6 +15,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_dateRange from "../lib/dateRange.js";
 import type * as lib_ownership from "../lib/ownership.js";
 import type * as lib_recurrenceFrequencies from "../lib/recurrenceFrequencies.js";
+import type * as lib_recurringOccurrences from "../lib/recurringOccurrences.js";
 import type * as lib_recurringRules from "../lib/recurringRules.js";
 import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "lib/dateRange": typeof lib_dateRange;
   "lib/ownership": typeof lib_ownership;
   "lib/recurrenceFrequencies": typeof lib_recurrenceFrequencies;
+  "lib/recurringOccurrences": typeof lib_recurringOccurrences;
   "lib/recurringRules": typeof lib_recurringRules;
   "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
