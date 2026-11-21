@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
-import { assetTypeValidator } from "./lib/assetTypes";
+import { LIQUID_ASSET_TYPES, assetTypeValidator } from "./lib/assetTypes";
 import { requireAuthUserId } from "./lib/auth";
 import { requireOwnedDocument } from "./lib/ownership";
 
@@ -91,6 +91,46 @@ export const list = query({
       .collect();
 
     return { assets, debts };
+  },
+});
+
+/**
+ * Net worth and liquidity of the signed-in user (US3.3).
+ * - `netWorthCents` = all assets − all debts. Can be negative.
+ * - `liquidityCents` = assets of a liquid type (bank accounts and cash).
+ * With no assets or debts both are 0. Being a query, the home card
+ * updates on its own when an asset or a debt changes.
+ */
+export const summary = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuthUserId(ctx);
+
+    const assets = await ctx.db
+      .query("assets")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const debts = await ctx.db
+      .query("debts")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    let assetsCents = 0;
+    let liquidityCents = 0;
+    for (const asset of assets) {
+      assetsCents += asset.amountCents;
+      if (LIQUID_ASSET_TYPES.includes(asset.type)) {
+        liquidityCents += asset.amountCents;
+      }
+    }
+
+    let debtsCents = 0;
+    for (const debt of debts) {
+      debtsCents += debt.amountCents;
+    }
+
+    return { netWorthCents: assetsCents - debtsCents, liquidityCents };
   },
 });
 
