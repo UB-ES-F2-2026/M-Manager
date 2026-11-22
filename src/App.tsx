@@ -6,6 +6,7 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
+import BudgetsPage from "./features/budgets/pages/BudgetsPage";
 import EditTransactionPage from "./features/transactions/pages/EditTransactionPage";
 import NewTransactionPage from "./features/transactions/pages/NewTransactionPage";
 import TransactionHistoryPage from "./features/transactions/pages/TransactionHistoryPage";
@@ -58,6 +59,14 @@ export default function App() {
         element={
           <RequireSession>
             <EditTransactionPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/budgets"
+        element={
+          <RequireSession>
+            <BudgetsPage />
           </RequireSession>
         }
       />
