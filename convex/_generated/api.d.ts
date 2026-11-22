@@ -17,6 +17,7 @@ import type * as lib_dateRange from "../lib/dateRange.js";
 import type * as lib_groupCodes from "../lib/groupCodes.js";
 import type * as lib_groupRoles from "../lib/groupRoles.js";
 import type * as lib_ownership from "../lib/ownership.js";
+import type * as lib_splitExpense from "../lib/splitExpense.js";
 import type * as lib_splitModes from "../lib/splitModes.js";
 import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   "lib/groupCodes": typeof lib_groupCodes;
   "lib/groupRoles": typeof lib_groupRoles;
   "lib/ownership": typeof lib_ownership;
+  "lib/splitExpense": typeof lib_splitExpense;
   "lib/splitModes": typeof lib_splitModes;
   "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;

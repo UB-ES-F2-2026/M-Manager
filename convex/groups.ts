@@ -9,12 +9,17 @@ import {
   isValidGroupCode,
   normalizeGroupCode,
 } from "./lib/groupCodes";
+import { splitByAmounts, splitByPercentages, splitEqually } from "./lib/splitExpense";
+import { assertValidAmountCents, assertValidConcept } from "./lib/validation";
 
 type GroupErrorCode =
   | "INVALID_NAME"
   | "INVALID_DESCRIPTION"
   | "INVALID_CODE"
-  | "CODE_GENERATION_FAILED";
+  | "CODE_GENERATION_FAILED"
+  | "NOT_FOUND"
+  | "INVALID_PAYER"
+  | "INVALID_PARTICIPANTS";
 
 export const MAX_GROUP_NAME_LENGTH = 80;
 export const MAX_GROUP_DESCRIPTION_LENGTH = 200;
@@ -234,3 +239,106 @@ export const get = query({
     };
   },
 });
+
+/** Same message for a missing group and a group the user is not in (README §7). */
+export const GROUP_NOT_FOUND_MESSAGE = "No s'ha trobat el grup.";
+
+/**
+ * How the expense is divided, as the «Com es divideix» toggle sends it:
+ * the participants for «Igual», their cents for «Imports», or their
+ * percentages for «Percentatges».
+ */
+const splitValidator = v.union(
+  v.object({
+    mode: v.literal("equal"),
+    participants: v.array(v.id("users")),
+  }),
+  v.object({
+    mode: v.literal("amounts"),
+    shares: v.array(v.object({ userId: v.id("users"), amountCents: v.number() })),
+  }),
+  v.object({
+    mode: v.literal("percentages"),
+    shares: v.array(v.object({ userId: v.id("users"), percentage: v.number() })),
+  }),
+);
+
+/**
+ * Adds a shared expense to a group (US4.2).
+ * Only members can add one: a malformed id, a missing group and a group the
+ * user is not in all fail with the same NOT_FOUND.
+ * The concept and amount follow the same rules as transactions. The payer and
+ * every participant must be members; the payer does not need to participate.
+ * The shares are computed here, in cents, and always add up to `amountCents`.
+ * Nothing is saved when any check fails. Returns the new expense id.
+ */
+export const createExpense = mutation({
+  args: {
+    groupId: v.string(),
+    concept: v.string(),
+    amountCents: v.number(),
+    paidBy: v.id("users"),
+    split: splitValidator,
+  },
+  handler: async (ctx, args): Promise<Id<"groupExpenses">> => {
+    const userId = await requireAuthUserId(ctx);
+    const groupId = ctx.db.normalizeId("groups", args.groupId);
+    const group = groupId === null ? null : await ctx.db.get(groupId);
+    if (group === null) {
+      return throwGroupError("NOT_FOUND", GROUP_NOT_FOUND_MESSAGE);
+    }
+
+    const memberships = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_and_user", (q) => q.eq("groupId", group._id))
+      .collect();
+    const memberIds = new Set<string>(memberships.map((membership) => membership.userId));
+    if (!memberIds.has(userId)) {
+      throwGroupError("NOT_FOUND", GROUP_NOT_FOUND_MESSAGE);
+    }
+
+    const concept = assertValidConcept(args.concept);
+    assertValidAmountCents(args.amountCents);
+
+    if (!memberIds.has(args.paidBy)) {
+      throwGroupError("INVALID_PAYER", "Qui ha pagat ha de ser membre del grup.");
+    }
+
+    const { split } = args;
+    const participants =
+      split.mode === "equal" ? split.participants : split.shares.map((share) => share.userId);
+    assertParticipants(participants, memberIds);
+
+    const shares =
+      split.mode === "equal"
+        ? splitEqually(args.amountCents, split.participants)
+        : split.mode === "amounts"
+          ? splitByAmounts(args.amountCents, split.shares)
+          : splitByPercentages(args.amountCents, split.shares);
+
+    return await ctx.db.insert("groupExpenses", {
+      groupId: group._id,
+      concept,
+      amountCents: args.amountCents,
+      paidBy: args.paidBy,
+      splitMode: split.mode,
+      shares,
+    });
+  },
+});
+
+/** At least one participant, none repeated, and all of them members. */
+function assertParticipants(participants: Id<"users">[], memberIds: Set<string>): void {
+  if (participants.length === 0) {
+    throwGroupError("INVALID_PARTICIPANTS", "Cal almenys un participant.");
+  }
+  if (new Set(participants).size !== participants.length) {
+    throwGroupError("INVALID_PARTICIPANTS", "Hi ha participants repetits.");
+  }
+  if (participants.some((participant) => !memberIds.has(participant))) {
+    throwGroupError(
+      "INVALID_PARTICIPANTS",
+      "Tots els participants han de ser membres del grup.",
+    );
+  }
+}
