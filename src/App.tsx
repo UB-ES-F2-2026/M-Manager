@@ -4,6 +4,7 @@ import RequireSession from "./features/auth/components/RequireSession";
 import HomePage from "./features/auth/pages/HomePage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
+import JoinGroupPage from "./features/groups/pages/JoinGroupPage";
 import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
 import EditTransactionPage from "./features/transactions/pages/EditTransactionPage";
@@ -58,6 +59,14 @@ export default function App() {
         element={
           <RequireSession>
             <EditTransactionPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/join"
+        element={
+          <RequireSession>
+            <JoinGroupPage />
           </RequireSession>
         }
       />

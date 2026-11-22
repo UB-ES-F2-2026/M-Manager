@@ -1,8 +1,9 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { ConvexError } from "convex/values";
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { INVALID_CREDENTIALS_MESSAGE } from "../../../../convex/lib/validation";
+import { redirectPathAfterAuth } from "../redirectAfterAuth";
 
 export const REQUIRED_FIELD_MESSAGE = "Aquest camp és obligatori";
 
@@ -79,6 +80,7 @@ export async function attemptLogin(signIn: PasswordSignIn, fields: LoginFields):
 export function useLoginForm() {
   const { signIn } = useAuthActions();
   const navigate = useNavigate();
+  const location = useLocation();
   const [fields, setFields] = useState<LoginFields>({ email: "", password: "" });
   const [errors, setErrors] = useState<LoginFieldErrors>({});
   const [hasCredentialsError, setHasCredentialsError] = useState(false);
@@ -102,8 +104,9 @@ export function useLoginForm() {
 
     setIsSubmitting(true);
     if (await attemptLogin(signIn, fields)) {
-      // Successful login goes to the main screen (AC1).
-      navigate("/", { replace: true });
+      // Successful login goes to the main screen (AC1), or back to the page
+      // that asked for the session.
+      navigate(redirectPathAfterAuth(location.state), { replace: true });
       return;
     }
     setHasCredentialsError(true);
