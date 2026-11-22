@@ -9,6 +9,7 @@ import {
   isValidGroupCode,
   normalizeGroupCode,
 } from "./lib/groupCodes";
+import { computeBalances, simplifyDebts } from "./lib/balances";
 import { splitByAmounts, splitByPercentages, splitEqually } from "./lib/splitExpense";
 import { assertValidAmountCents, assertValidConcept } from "./lib/validation";
 
@@ -159,6 +160,21 @@ async function getMemberAccess(ctx: QueryCtx, rawGroupId: string, userId: Id<"us
   return group === null ? null : { group, myMembership };
 }
 
+/** Members with their display name and role: owner first, then by name. */
+async function loadMembers(ctx: QueryCtx, groupId: Id<"groups">) {
+  const memberships = await ctx.db
+    .query("groupMembers")
+    .withIndex("by_group_and_user", (q) => q.eq("groupId", groupId))
+    .collect();
+  const members = await Promise.all(
+    memberships.map(async (membership) => {
+      const user = await ctx.db.get(membership.userId);
+      return { userId: membership.userId, name: user?.name ?? "", role: membership.role };
+    }),
+  );
+  return members.sort(compareMembers);
+}
+
 /** Owner first, then by name, so the creator («Admin») heads the list. */
 function compareMembers(
   a: { name: string; role: GroupRole },
@@ -220,22 +236,6 @@ export const get = query({
       return null;
     }
     const { group, myMembership } = access;
-    const groupId = group._id;
-
-    const memberships = await ctx.db
-      .query("groupMembers")
-      .withIndex("by_group_and_user", (q) => q.eq("groupId", groupId))
-      .collect();
-    const members = await Promise.all(
-      memberships.map(async (membership) => {
-        const user = await ctx.db.get(membership.userId);
-        return {
-          userId: membership.userId,
-          name: user?.name ?? "",
-          role: membership.role,
-        };
-      }),
-    );
 
     return {
       _id: group._id,
@@ -243,7 +243,7 @@ export const get = query({
       description: group.description,
       code: group.code,
       myRole: myMembership.role,
-      members: members.sort(compareMembers),
+      members: await loadMembers(ctx, group._id),
     };
   },
 });
@@ -387,5 +387,55 @@ export const listExpenses = query({
       paidByName: payerNames.get(expense.paidBy) ?? "",
       participantCount: expense.shares.length,
     }));
+  },
+});
+
+/**
+ * «Balanços» and «Per saldar» of /groups/:groupId (US4.3), computed here and
+ * not in the frontend (README §6).
+ * - `balances`: one row per member, in the order of the members list, with
+ *   balanceCents = paid as payer − shares as participant + settlements
+ *   received − settlements made (> 0 «Li deuen», < 0 «Deu», 0 «En pau»).
+ * - `transfers`: the suggested payments of the deterministic greedy algorithm,
+ *   with the names the cards show.
+ * Reactive: a new expense or settlement recomputes both.
+ * Only for members: otherwise null, like `get`.
+ */
+export const getBalances = query({
+  args: { groupId: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await requireAuthUserId(ctx);
+    const access = await getMemberAccess(ctx, args.groupId, userId);
+    if (access === null) {
+      return null;
+    }
+    const groupId = access.group._id;
+
+    const members = await loadMembers(ctx, groupId);
+    const expenses = await ctx.db
+      .query("groupExpenses")
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .collect();
+    const settlements = await ctx.db
+      .query("groupSettlements")
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .collect();
+
+    const balances = computeBalances(
+      members.map((member) => member.userId),
+      expenses,
+      settlements,
+    );
+    const names = new Map(members.map((member) => [member.userId, member.name]));
+    const nameOf = (memberId: Id<"users">) => names.get(memberId) ?? "";
+
+    return {
+      balances: balances.map((balance) => ({ ...balance, name: nameOf(balance.userId) })),
+      transfers: simplifyDebts(balances).map((transfer) => ({
+        ...transfer,
+        fromName: nameOf(transfer.fromUserId),
+        toName: nameOf(transfer.toUserId),
+      })),
+    };
   },
 });
