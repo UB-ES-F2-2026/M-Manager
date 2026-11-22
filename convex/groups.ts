@@ -1,7 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { mutation, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { requireAuthUserId } from "./lib/auth";
+import type { GroupRole } from "./lib/groupRoles";
 import {
   generateGroupCode,
   INVALID_GROUP_CODE_MESSAGE,
@@ -129,5 +130,107 @@ export const join = mutation({
       role: "member",
     });
     return { groupId: group._id, alreadyMember: false };
+  },
+});
+
+/** Owner first, then by name, so the creator («Admin») heads the list. */
+function compareMembers(
+  a: { name: string; role: GroupRole },
+  b: { name: string; role: GroupRole },
+): number {
+  if (a.role !== b.role) {
+    return a.role === "owner" ? -1 : 1;
+  }
+  return a.name.localeCompare(b.name, "ca");
+}
+
+/**
+ * Groups the signed-in user belongs to, for the /groups list (US4.1).
+ * Sorted by name; `role` lets the UI tell the groups the user created.
+ */
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireAuthUserId(ctx);
+
+    const memberships = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const groups = await Promise.all(
+      memberships.map(async (membership) => {
+        const group = await ctx.db.get(membership.groupId);
+        return group === null
+          ? null
+          : {
+              _id: group._id,
+              name: group.name,
+              description: group.description,
+              role: membership.role,
+            };
+      }),
+    );
+
+    return groups
+      .filter((group) => group !== null)
+      .sort((a, b) => a.name.localeCompare(b.name, "ca"));
+  },
+});
+
+/**
+ * Detail of a group for /groups/:groupId (US4.1): name, description, invite
+ * code and members with their display name and role.
+ * Only members can see it. A malformed id, a missing group and a group the
+ * user does not belong to all return null, so the UI shows "not found" without
+ * revealing whether the group exists (README §7).
+ */
+export const get = query({
+  args: { groupId: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await requireAuthUserId(ctx);
+    const groupId = ctx.db.normalizeId("groups", args.groupId);
+    if (groupId === null) {
+      return null;
+    }
+
+    const myMembership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_and_user", (q) =>
+        q.eq("groupId", groupId).eq("userId", userId),
+      )
+      .unique();
+    if (myMembership === null) {
+      return null;
+    }
+
+    const group = await ctx.db.get(groupId);
+    if (group === null) {
+      return null;
+    }
+
+    const memberships = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_and_user", (q) => q.eq("groupId", groupId))
+      .collect();
+    const members = await Promise.all(
+      memberships.map(async (membership) => {
+        const user = await ctx.db.get(membership.userId);
+        return {
+          userId: membership.userId,
+          name: user?.name ?? "",
+          role: membership.role,
+        };
+      }),
+    );
+
+    return {
+      _id: group._id,
+      name: group.name,
+      description: group.description,
+      code: group.code,
+      myRole: myMembership.role,
+      members: members.sort(compareMembers),
+    };
   },
 });
