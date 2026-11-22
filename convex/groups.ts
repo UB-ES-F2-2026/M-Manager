@@ -20,7 +20,8 @@ type GroupErrorCode =
   | "CODE_GENERATION_FAILED"
   | "NOT_FOUND"
   | "INVALID_PAYER"
-  | "INVALID_PARTICIPANTS";
+  | "INVALID_PARTICIPANTS"
+  | "TRANSFER_NOT_PENDING";
 
 export const MAX_GROUP_NAME_LENGTH = 80;
 export const MAX_GROUP_DESCRIPTION_LENGTH = 200;
@@ -390,6 +391,25 @@ export const listExpenses = query({
   },
 });
 
+/** The members of a group and their balances, from its expenses and settlements. */
+async function loadBalances(ctx: QueryCtx, groupId: Id<"groups">) {
+  const members = await loadMembers(ctx, groupId);
+  const expenses = await ctx.db
+    .query("groupExpenses")
+    .withIndex("by_group", (q) => q.eq("groupId", groupId))
+    .collect();
+  const settlements = await ctx.db
+    .query("groupSettlements")
+    .withIndex("by_group", (q) => q.eq("groupId", groupId))
+    .collect();
+  const balances = computeBalances(
+    members.map((member) => member.userId),
+    expenses,
+    settlements,
+  );
+  return { members, balances };
+}
+
 /**
  * «Balanços» and «Per saldar» of /groups/:groupId (US4.3), computed here and
  * not in the frontend (README §6).
@@ -409,23 +429,7 @@ export const getBalances = query({
     if (access === null) {
       return null;
     }
-    const groupId = access.group._id;
-
-    const members = await loadMembers(ctx, groupId);
-    const expenses = await ctx.db
-      .query("groupExpenses")
-      .withIndex("by_group", (q) => q.eq("groupId", groupId))
-      .collect();
-    const settlements = await ctx.db
-      .query("groupSettlements")
-      .withIndex("by_group", (q) => q.eq("groupId", groupId))
-      .collect();
-
-    const balances = computeBalances(
-      members.map((member) => member.userId),
-      expenses,
-      settlements,
-    );
+    const { members, balances } = await loadBalances(ctx, access.group._id);
     const names = new Map(members.map((member) => [member.userId, member.name]));
     const nameOf = (memberId: Id<"users">) => names.get(memberId) ?? "";
 
@@ -437,5 +441,54 @@ export const getBalances = query({
         toName: nameOf(transfer.toUserId),
       })),
     };
+  },
+});
+
+/** Message when the transfer to settle is no longer one of «Per saldar». */
+export const TRANSFER_NOT_PENDING_MESSAGE = "Aquest deute ja no està pendent.";
+
+/**
+ * «Saldar deute» (US4.3): records that `fromUserId` paid `amountCents` to
+ * `toUserId`. Any member can do it, not only the debtor. Expenses are not
+ * touched; the balances and «Per saldar» recompute on their own.
+ * Only a transfer that is currently suggested can be settled, with exactly its
+ * amount: partial amounts are out of scope, and if two members settle the same
+ * transfer at once the second one fails instead of paying twice.
+ * Non-members get NOT_FOUND without revealing the group. Returns the new id.
+ */
+export const settleDebt = mutation({
+  args: {
+    groupId: v.string(),
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    amountCents: v.number(),
+  },
+  handler: async (ctx, args): Promise<Id<"groupSettlements">> => {
+    const userId = await requireAuthUserId(ctx);
+    const access = await getMemberAccess(ctx, args.groupId, userId);
+    if (access === null) {
+      return throwGroupError("NOT_FOUND", GROUP_NOT_FOUND_MESSAGE);
+    }
+    const groupId = access.group._id;
+    assertValidAmountCents(args.amountCents);
+
+    const { balances } = await loadBalances(ctx, groupId);
+    const isPending = simplifyDebts(balances).some(
+      (transfer) =>
+        transfer.fromUserId === args.fromUserId &&
+        transfer.toUserId === args.toUserId &&
+        transfer.amountCents === args.amountCents,
+    );
+    if (!isPending) {
+      throwGroupError("TRANSFER_NOT_PENDING", TRANSFER_NOT_PENDING_MESSAGE);
+    }
+
+    return await ctx.db.insert("groupSettlements", {
+      groupId,
+      fromUserId: args.fromUserId,
+      toUserId: args.toUserId,
+      amountCents: args.amountCents,
+      recordedBy: userId,
+    });
   },
 });
