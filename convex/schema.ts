@@ -2,12 +2,13 @@ import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { assetTypeValidator } from "./lib/assetTypes";
+import { groupRoleValidator } from "./lib/groupRoles";
 import { transactionCategoryValidator } from "./lib/transactionCategories";
 
 /**
  * Database schema (source of truth).
  * Auth tables + user profile fields (name, email) + transactions (US2.1)
- * + assets and debts (US3.2).
+ * + assets and debts (US3.2) + groups and their members (US4.1).
  */
 export default defineSchema({
   ...authTables,
@@ -63,4 +64,33 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_dueDate", ["userId", "dueDate"]),
+
+  /**
+   * Shared-expense group (US4.1). Who belongs to it lives in `groupMembers`.
+   * `name` is trimmed, 1–80 characters. `description` is trimmed, at most 200
+   * characters, and is always stored: an empty description is "".
+   * `code` is the unique invite code: 6 uppercase characters from A–Z and 2–9
+   * without 0, O, 1 or I. Unique because the join mutation looks it up with
+   * `by_code` and the create mutation retries until it is free.
+   */
+  groups: defineTable({
+    name: v.string(),
+    description: v.string(),
+    code: v.string(),
+  }).index("by_code", ["code"]),
+
+  /**
+   * Membership of a user in a group (US4.1): one row per (groupId, userId).
+   * Only members can see a group. The creator is the "owner"; users who join
+   * with the code are "member".
+   * `by_group_and_user` checks membership and, by `groupId` alone, lists the
+   * members of a group; `by_user` lists the groups of a user.
+   */
+  groupMembers: defineTable({
+    groupId: v.id("groups"),
+    userId: v.id("users"),
+    role: groupRoleValidator,
+  })
+    .index("by_group_and_user", ["groupId", "userId"])
+    .index("by_user", ["userId"]),
 });
