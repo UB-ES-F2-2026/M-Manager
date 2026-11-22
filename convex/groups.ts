@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { requireAuthUserId } from "./lib/auth";
 import type { GroupRole } from "./lib/groupRoles";
 import {
@@ -138,6 +138,27 @@ export const join = mutation({
   },
 });
 
+/**
+ * The group and the user's membership, or null when the id is malformed, the
+ * group does not exist or the user is not a member. Queries return that null
+ * as is, so they never reveal whether a group exists (README §7).
+ */
+async function getMemberAccess(ctx: QueryCtx, rawGroupId: string, userId: Id<"users">) {
+  const groupId = ctx.db.normalizeId("groups", rawGroupId);
+  if (groupId === null) {
+    return null;
+  }
+  const myMembership = await ctx.db
+    .query("groupMembers")
+    .withIndex("by_group_and_user", (q) => q.eq("groupId", groupId).eq("userId", userId))
+    .unique();
+  if (myMembership === null) {
+    return null;
+  }
+  const group = await ctx.db.get(groupId);
+  return group === null ? null : { group, myMembership };
+}
+
 /** Owner first, then by name, so the creator («Admin») heads the list. */
 function compareMembers(
   a: { name: string; role: GroupRole },
@@ -194,25 +215,12 @@ export const get = query({
   args: { groupId: v.string() },
   handler: async (ctx, args) => {
     const userId = await requireAuthUserId(ctx);
-    const groupId = ctx.db.normalizeId("groups", args.groupId);
-    if (groupId === null) {
+    const access = await getMemberAccess(ctx, args.groupId, userId);
+    if (access === null) {
       return null;
     }
-
-    const myMembership = await ctx.db
-      .query("groupMembers")
-      .withIndex("by_group_and_user", (q) =>
-        q.eq("groupId", groupId).eq("userId", userId),
-      )
-      .unique();
-    if (myMembership === null) {
-      return null;
-    }
-
-    const group = await ctx.db.get(groupId);
-    if (group === null) {
-      return null;
-    }
+    const { group, myMembership } = access;
+    const groupId = group._id;
 
     const memberships = await ctx.db
       .query("groupMembers")
@@ -342,3 +350,42 @@ function assertParticipants(participants: Id<"users">[], memberIds: Set<string>)
     );
   }
 }
+
+/**
+ * History of a group's expenses for /groups/:groupId (US4.2), most recent
+ * first. Each row has what the list shows: concept, amount, who paid, how
+ * many people take part and the date (`_creationTime`, in ms).
+ * Only for members: otherwise null, like `get`.
+ */
+export const listExpenses = query({
+  args: { groupId: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await requireAuthUserId(ctx);
+    const access = await getMemberAccess(ctx, args.groupId, userId);
+    if (access === null) {
+      return null;
+    }
+
+    const expenses = await ctx.db
+      .query("groupExpenses")
+      .withIndex("by_group", (q) => q.eq("groupId", access.group._id))
+      .order("desc")
+      .collect();
+
+    const payerNames = new Map<Id<"users">, string>();
+    for (const payerId of new Set(expenses.map((expense) => expense.paidBy))) {
+      const payer = await ctx.db.get(payerId);
+      payerNames.set(payerId, payer?.name ?? "");
+    }
+
+    return expenses.map((expense) => ({
+      _id: expense._id,
+      _creationTime: expense._creationTime,
+      concept: expense.concept,
+      amountCents: expense.amountCents,
+      paidBy: expense.paidBy,
+      paidByName: payerNames.get(expense.paidBy) ?? "",
+      participantCount: expense.shares.length,
+    }));
+  },
+});
