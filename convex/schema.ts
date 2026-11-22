@@ -3,12 +3,14 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { assetTypeValidator } from "./lib/assetTypes";
 import { groupRoleValidator } from "./lib/groupRoles";
+import { splitModeValidator } from "./lib/splitModes";
 import { transactionCategoryValidator } from "./lib/transactionCategories";
 
 /**
  * Database schema (source of truth).
  * Auth tables + user profile fields (name, email) + transactions (US2.1)
- * + assets and debts (US3.2) + groups and their members (US4.1).
+ * + assets and debts (US3.2) + groups and their members (US4.1)
+ * + shared group expenses (US4.2).
  */
 export default defineSchema({
   ...authTables,
@@ -93,4 +95,30 @@ export default defineSchema({
   })
     .index("by_group_and_user", ["groupId", "userId"])
     .index("by_user", ["userId"]),
+
+  /**
+   * Shared expense of a group (US4.2). Always an expense, so there is no `type`.
+   * `concept` is trimmed, 1–80 characters; `amountCents` is a positive integer.
+   * `paidBy` is a member of the group, and may or may not be a participant.
+   * `shares` holds one entry per participant (at least one) with the cents
+   * that participant owes; they always add up to exactly `amountCents`,
+   * whatever the `splitMode`. Stored inside the expense so it is written in a
+   * single insert and the balances (US4.3) read it without extra queries.
+   * The history date is the system field `_creationTime`.
+   * `by_group` lists a group's expenses; ordered by `_creationTime`, so
+   * `.order("desc")` gives the most recent first.
+   */
+  groupExpenses: defineTable({
+    groupId: v.id("groups"),
+    concept: v.string(),
+    amountCents: v.number(),
+    paidBy: v.id("users"),
+    splitMode: splitModeValidator,
+    shares: v.array(
+      v.object({
+        userId: v.id("users"),
+        amountCents: v.number(),
+      }),
+    ),
+  }).index("by_group", ["groupId"]),
 });
