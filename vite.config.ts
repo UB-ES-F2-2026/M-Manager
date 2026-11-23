@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
     environment: "edge-runtime",
-    include: ["src/**/*.test.ts", "convex/**/*.test.ts"],
+    // Component tests (.test.tsx) opt into jsdom with `// @vitest-environment jsdom`.
+    include: ["src/**/*.test.{ts,tsx}", "convex/**/*.test.ts"],
     server: { deps: { inline: ["convex-test"] } },
     // Convex Auth hashes passwords; with coverage on, a sign-in test can take 10+ s.
     testTimeout: 30_000,
@@ -24,9 +25,9 @@ export default defineConfig({
       reportsDirectory: "coverage",
       // Floor just under today's numbers: the CI fails if coverage drops.
       thresholds: {
-        lines: 45,
+        lines: 50,
         branches: 85,
-        functions: 70,
+        functions: 75,
         "convex/**/*.ts": { lines: 90, branches: 85, functions: 90 },
       },
     },
