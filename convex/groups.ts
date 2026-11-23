@@ -9,6 +9,7 @@ import {
   isValidGroupCode,
   normalizeGroupCode,
 } from "./lib/groupCodes";
+import { computeBalances, simplifyDebts } from "./lib/balances";
 import { splitByAmounts, splitByPercentages, splitEqually } from "./lib/splitExpense";
 import { assertValidAmountCents, assertValidConcept } from "./lib/validation";
 
@@ -19,7 +20,8 @@ type GroupErrorCode =
   | "CODE_GENERATION_FAILED"
   | "NOT_FOUND"
   | "INVALID_PAYER"
-  | "INVALID_PARTICIPANTS";
+  | "INVALID_PARTICIPANTS"
+  | "TRANSFER_NOT_PENDING";
 
 export const MAX_GROUP_NAME_LENGTH = 80;
 export const MAX_GROUP_DESCRIPTION_LENGTH = 200;
@@ -159,6 +161,21 @@ async function getMemberAccess(ctx: QueryCtx, rawGroupId: string, userId: Id<"us
   return group === null ? null : { group, myMembership };
 }
 
+/** Members with their display name and role: owner first, then by name. */
+async function loadMembers(ctx: QueryCtx, groupId: Id<"groups">) {
+  const memberships = await ctx.db
+    .query("groupMembers")
+    .withIndex("by_group_and_user", (q) => q.eq("groupId", groupId))
+    .collect();
+  const members = await Promise.all(
+    memberships.map(async (membership) => {
+      const user = await ctx.db.get(membership.userId);
+      return { userId: membership.userId, name: user?.name ?? "", role: membership.role };
+    }),
+  );
+  return members.sort(compareMembers);
+}
+
 /** Owner first, then by name, so the creator («Admin») heads the list. */
 function compareMembers(
   a: { name: string; role: GroupRole },
@@ -220,22 +237,6 @@ export const get = query({
       return null;
     }
     const { group, myMembership } = access;
-    const groupId = group._id;
-
-    const memberships = await ctx.db
-      .query("groupMembers")
-      .withIndex("by_group_and_user", (q) => q.eq("groupId", groupId))
-      .collect();
-    const members = await Promise.all(
-      memberships.map(async (membership) => {
-        const user = await ctx.db.get(membership.userId);
-        return {
-          userId: membership.userId,
-          name: user?.name ?? "",
-          role: membership.role,
-        };
-      }),
-    );
 
     return {
       _id: group._id,
@@ -243,7 +244,7 @@ export const get = query({
       description: group.description,
       code: group.code,
       myRole: myMembership.role,
-      members: members.sort(compareMembers),
+      members: await loadMembers(ctx, group._id),
     };
   },
 });
@@ -387,5 +388,107 @@ export const listExpenses = query({
       paidByName: payerNames.get(expense.paidBy) ?? "",
       participantCount: expense.shares.length,
     }));
+  },
+});
+
+/** The members of a group and their balances, from its expenses and settlements. */
+async function loadBalances(ctx: QueryCtx, groupId: Id<"groups">) {
+  const members = await loadMembers(ctx, groupId);
+  const expenses = await ctx.db
+    .query("groupExpenses")
+    .withIndex("by_group", (q) => q.eq("groupId", groupId))
+    .collect();
+  const settlements = await ctx.db
+    .query("groupSettlements")
+    .withIndex("by_group", (q) => q.eq("groupId", groupId))
+    .collect();
+  const balances = computeBalances(
+    members.map((member) => member.userId),
+    expenses,
+    settlements,
+  );
+  return { members, balances };
+}
+
+/**
+ * «Balanços» and «Per saldar» of /groups/:groupId (US4.3), computed here and
+ * not in the frontend (README §6).
+ * - `balances`: one row per member, in the order of the members list, with
+ *   balanceCents = paid as payer − shares as participant + settlements
+ *   received − settlements made (> 0 «Li deuen», < 0 «Deu», 0 «En pau»).
+ * - `transfers`: the suggested payments of the deterministic greedy algorithm,
+ *   with the names the cards show.
+ * Reactive: a new expense or settlement recomputes both.
+ * Only for members: otherwise null, like `get`.
+ */
+export const getBalances = query({
+  args: { groupId: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await requireAuthUserId(ctx);
+    const access = await getMemberAccess(ctx, args.groupId, userId);
+    if (access === null) {
+      return null;
+    }
+    const { members, balances } = await loadBalances(ctx, access.group._id);
+    const names = new Map(members.map((member) => [member.userId, member.name]));
+    const nameOf = (memberId: Id<"users">) => names.get(memberId) ?? "";
+
+    return {
+      balances: balances.map((balance) => ({ ...balance, name: nameOf(balance.userId) })),
+      transfers: simplifyDebts(balances).map((transfer) => ({
+        ...transfer,
+        fromName: nameOf(transfer.fromUserId),
+        toName: nameOf(transfer.toUserId),
+      })),
+    };
+  },
+});
+
+/** Message when the transfer to settle is no longer one of «Per saldar». */
+export const TRANSFER_NOT_PENDING_MESSAGE = "Aquest deute ja no està pendent.";
+
+/**
+ * «Saldar deute» (US4.3): records that `fromUserId` paid `amountCents` to
+ * `toUserId`. Any member can do it, not only the debtor. Expenses are not
+ * touched; the balances and «Per saldar» recompute on their own.
+ * Only a transfer that is currently suggested can be settled, with exactly its
+ * amount: partial amounts are out of scope, and if two members settle the same
+ * transfer at once the second one fails instead of paying twice.
+ * Non-members get NOT_FOUND without revealing the group. Returns the new id.
+ */
+export const settleDebt = mutation({
+  args: {
+    groupId: v.string(),
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    amountCents: v.number(),
+  },
+  handler: async (ctx, args): Promise<Id<"groupSettlements">> => {
+    const userId = await requireAuthUserId(ctx);
+    const access = await getMemberAccess(ctx, args.groupId, userId);
+    if (access === null) {
+      return throwGroupError("NOT_FOUND", GROUP_NOT_FOUND_MESSAGE);
+    }
+    const groupId = access.group._id;
+    assertValidAmountCents(args.amountCents);
+
+    const { balances } = await loadBalances(ctx, groupId);
+    const isPending = simplifyDebts(balances).some(
+      (transfer) =>
+        transfer.fromUserId === args.fromUserId &&
+        transfer.toUserId === args.toUserId &&
+        transfer.amountCents === args.amountCents,
+    );
+    if (!isPending) {
+      throwGroupError("TRANSFER_NOT_PENDING", TRANSFER_NOT_PENDING_MESSAGE);
+    }
+
+    return await ctx.db.insert("groupSettlements", {
+      groupId,
+      fromUserId: args.fromUserId,
+      toUserId: args.toUserId,
+      amountCents: args.amountCents,
+      recordedBy: userId,
+    });
   },
 });

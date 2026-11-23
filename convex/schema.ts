@@ -10,7 +10,7 @@ import { transactionCategoryValidator } from "./lib/transactionCategories";
  * Database schema (source of truth).
  * Auth tables + user profile fields (name, email) + transactions (US2.1)
  * + assets and debts (US3.2) + groups and their members (US4.1)
- * + shared group expenses (US4.2).
+ * + shared group expenses (US4.2) + settlements between members (US4.3).
  */
 export default defineSchema({
   ...authTables,
@@ -120,5 +120,22 @@ export default defineSchema({
         amountCents: v.number(),
       }),
     ),
+  }).index("by_group", ["groupId"]),
+
+  /**
+   * Settlement (US4.3): a payment from one member to another that settles a
+   * suggested transfer of «Per saldar». Expenses are never deleted; the
+   * balances add the settlements received and subtract the ones made.
+   * `fromUserId` pays `amountCents` (positive integer) to `toUserId`; both are
+   * members and different. Any member can record it: `recordedBy` is who did.
+   * Not shown in the expense history. The date is `_creationTime`.
+   * `by_group` reads a group's settlements to compute its balances.
+   */
+  groupSettlements: defineTable({
+    groupId: v.id("groups"),
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    amountCents: v.number(),
+    recordedBy: v.id("users"),
   }).index("by_group", ["groupId"]),
 });
