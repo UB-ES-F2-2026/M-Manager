@@ -7,6 +7,8 @@ type ConfirmDialogProps = {
   description: string;
   confirmLabel: string;
   cancelLabel?: string;
+  /** "primary" when confirming is not destructive, e.g. recording a payment. */
+  confirmVariant?: "primary" | "danger";
   /** Disables both buttons and shows a spinner while confirming. */
   loading?: boolean;
   /** Shown inside the dialog, e.g. when the action failed. */
@@ -22,6 +24,7 @@ export default function ConfirmDialog({
   description,
   confirmLabel,
   cancelLabel = "Cancel·lar",
+  confirmVariant = "danger",
   loading = false,
   error = null,
   onConfirm,
@@ -67,7 +70,7 @@ export default function ConfirmDialog({
           >
             {cancelLabel}
           </button>
-          <Button variant="danger" loading={loading} onClick={onConfirm}>
+          <Button variant={confirmVariant} loading={loading} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>
