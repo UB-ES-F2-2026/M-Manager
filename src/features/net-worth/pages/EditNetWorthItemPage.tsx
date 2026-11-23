@@ -1,11 +1,13 @@
 import { useQuery } from "convex/react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import Button from "../../../components/ui/Button";
 import FormAlert from "../../../components/ui/FormAlert";
 import SessionLoading from "../../auth/components/SessionLoading";
+import DeleteNetWorthItemButton from "../components/DeleteNetWorthItemButton";
 import NetWorthFormFields from "../components/NetWorthFormFields";
+import type { NetWorthDeleteTarget } from "../hooks/useDeleteNetWorthItem";
 import { useNetWorthForm, type NetWorthItem, type NetWorthKind } from "../hooks/useNetWorthForm";
 
 const TEXTS = {
@@ -20,6 +22,7 @@ type EditNetWorthItemPageProps = {
 /** US3.2 AC3: edit an asset or a debt. The id comes from the URL. */
 export default function EditNetWorthItemPage({ kind }: EditNetWorthItemPageProps) {
   const { itemId = "" } = useParams();
+  const navigate = useNavigate();
   const asset = useQuery(api.netWorth.getAsset, kind === "asset" ? { assetId: itemId } : "skip");
   const debt = useQuery(api.netWorth.getDebt, kind === "debt" ? { debtId: itemId } : "skip");
   const item: NetWorthItem | null | undefined =
@@ -42,7 +45,8 @@ export default function EditNetWorthItemPage({ kind }: EditNetWorthItemPageProps
 
   return (
     <EditLayout title={TEXTS[kind].title}>
-      <EditNetWorthItemForm item={item} />
+      {/* Navigates from here: deleting unmounts the form as soon as the query returns null. */}
+      <EditNetWorthItemForm item={item} onDeleted={() => navigate("/", { replace: true })} />
     </EditLayout>
   );
 }
@@ -64,23 +68,30 @@ function EditLayout({ title, children }: { title: string; children: ReactNode })
 }
 
 /** Mounted only once the item has loaded, so useState starts from its values. */
-function EditNetWorthItemForm({ item }: { item: NetWorthItem }) {
+function EditNetWorthItemForm({ item, onDeleted }: { item: NetWorthItem; onDeleted: () => void }) {
   const { fields, errors, isSubmitting, setField, handleSubmit } = useNetWorthForm(item);
   const { fieldErrors, alert } = errors;
+  const deleteTarget: NetWorthDeleteTarget =
+    item.kind === "asset"
+      ? { kind: "asset", id: item.asset._id }
+      : { kind: "debt", id: item.debt._id };
 
   return (
-    <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {alert && <FormAlert title={alert.title} description={alert.description} />}
-      <NetWorthFormFields
-        fields={fields}
-        fieldErrors={fieldErrors}
-        disabled={isSubmitting}
-        setField={setField}
-      />
+    <>
+      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {alert && <FormAlert title={alert.title} description={alert.description} />}
+        <NetWorthFormFields
+          fields={fields}
+          fieldErrors={fieldErrors}
+          disabled={isSubmitting}
+          setField={setField}
+        />
 
-      <Button type="submit" loading={isSubmitting} className="mt-2">
-        {isSubmitting ? "Desant…" : "Desar canvis"}
-      </Button>
-    </form>
+        <Button type="submit" loading={isSubmitting} className="mt-2">
+          {isSubmitting ? "Desant…" : "Desar canvis"}
+        </Button>
+      </form>
+      <DeleteNetWorthItemButton target={deleteTarget} onDeleted={onDeleted} />
+    </>
   );
 }
