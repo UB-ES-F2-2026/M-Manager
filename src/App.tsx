@@ -7,6 +7,7 @@ import RegisterPage from "./features/auth/pages/RegisterPage";
 import GroupDetailPage from "./features/groups/pages/GroupDetailPage";
 import GroupsPage from "./features/groups/pages/GroupsPage";
 import JoinGroupPage from "./features/groups/pages/JoinGroupPage";
+import NewGroupExpensePage from "./features/groups/pages/NewGroupExpensePage";
 import NewGroupPage from "./features/groups/pages/NewGroupPage";
 import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
@@ -118,6 +119,14 @@ export default function App() {
         element={
           <RequireSession>
             <EditNetWorthItemPage kind="debt" />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/:groupId/expenses/new"
+        element={
+          <RequireSession>
+            <NewGroupExpensePage />
           </RequireSession>
         }
       />
