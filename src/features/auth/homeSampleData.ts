@@ -1,6 +1,6 @@
 /**
- * Sample data still used by the balance card and account list on the home
- * screen. Recent movements (US2.3) and monthly savings (US2.4) come from Convex.
+ * Sample bank accounts for the account list. The home screen no longer uses
+ * them: the balance card was replaced by real net worth and liquidity (US3.3).
  */
 
 export type SampleAccount = {
@@ -11,8 +11,6 @@ export type SampleAccount = {
   lastDigits: string;
   balanceCents: number;
 };
-
-export const SAMPLE_TOTAL_BALANCE_CENTS = 1248032;
 
 export const SAMPLE_ACCOUNTS: SampleAccount[] = [
   {
