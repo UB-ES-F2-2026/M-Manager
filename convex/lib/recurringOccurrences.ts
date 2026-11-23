@@ -27,6 +27,18 @@ export function utcCivilParts(timestampMs: number): {
   };
 }
 
+/** UTC midnight for a civil Y-M-D. */
+export function utcMidnight(year: number, month: number, day: number): number {
+  return Date.UTC(year, month - 1, day);
+}
+
+/** True when both timestamps fall on the same UTC civil day. */
+export function sameUtcCivilDay(aMs: number, bMs: number): boolean {
+  const a = utcCivilParts(aMs);
+  const b = utcCivilParts(bMs);
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
 /**
  * Whether this civil day is an occurrence of the rule (US2.5).
  * Monthly: same day-of-month. Yearly: same month and day.

@@ -1,8 +1,14 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { requireAuthUserId } from "./lib/auth";
 import { assertValidDateRange } from "./lib/dateRange";
-import { expandUpcomingPayments } from "./lib/recurringOccurrences";
+import {
+  expandUpcomingPayments,
+  ruleMatchesCivilDay,
+  sameUtcCivilDay,
+  utcCivilParts,
+  utcMidnight,
+} from "./lib/recurringOccurrences";
 import { findRuleBySourceTransaction } from "./lib/recurringRules";
 
 /**
@@ -58,5 +64,53 @@ export const upcomingPayments = query({
       .collect();
 
     return expandUpcomingPayments(rules, rangeStart, rangeEnd);
+  },
+});
+
+/**
+ * Daily job (US2.5 AC3): for each rule that matches today's UTC civil day,
+ * inserts a normal transaction and records lastMaterializedAt so it is not
+ * duplicated if the cron runs again the same day.
+ */
+export const materializeDue = internalMutation({
+  args: {
+    /** Optional override for tests; defaults to Date.now(). */
+    nowMs: v.optional(v.number()),
+  },
+  handler: async (ctx, { nowMs }) => {
+    const now = nowMs ?? Date.now();
+    const { year, month, day } = utcCivilParts(now);
+    const todayMidnight = utcMidnight(year, month, day);
+
+    const candidates = await ctx.db
+      .query("recurringTransactions")
+      .withIndex("by_day_of_month", (q) => q.eq("dayOfMonth", day))
+      .collect();
+
+    let created = 0;
+    for (const rule of candidates) {
+      if (!ruleMatchesCivilDay(rule, month, day)) {
+        continue;
+      }
+      if (
+        rule.lastMaterializedAt !== undefined &&
+        sameUtcCivilDay(rule.lastMaterializedAt, todayMidnight)
+      ) {
+        continue;
+      }
+
+      await ctx.db.insert("transactions", {
+        userId: rule.userId,
+        type: rule.type,
+        amountCents: rule.amountCents,
+        category: rule.category,
+        concept: rule.concept,
+        date: todayMidnight,
+      });
+      await ctx.db.patch(rule._id, { lastMaterializedAt: todayMidnight });
+      created += 1;
+    }
+
+    return { created };
   },
 });
