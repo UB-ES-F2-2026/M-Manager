@@ -35,3 +35,6 @@ dist-ssr
 # Cloudflare
 .wrangler/
 dist/
+
+# Test coverage (npm run test:coverage)
+coverage/
