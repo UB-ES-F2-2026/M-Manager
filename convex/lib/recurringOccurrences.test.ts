@@ -8,23 +8,12 @@ import {
   utcMidnight,
 } from "./recurringOccurrences";
 
-type Rule = Pick<
-  Doc<"recurringTransactions">,
-  | "_id"
-  | "userId"
-  | "sourceTransactionId"
-  | "type"
-  | "amountCents"
-  | "category"
-  | "concept"
-  | "frequency"
-  | "dayOfMonth"
-  | "monthOfYear"
->;
+type Rule = Doc<"recurringTransactions">;
 
 function rule(overrides: Partial<Rule> = {}): Rule {
   return {
     _id: "jd7rule" as Rule["_id"],
+    _creationTime: 0,
     userId: "jd7user" as Rule["userId"],
     sourceTransactionId: "jd7tx" as Rule["sourceTransactionId"],
     type: "expense",
