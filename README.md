@@ -52,7 +52,7 @@ Repositori: [github.com/UB-ES-F2-2026/M-Manager](https://github.com/UB-ES-F2-202
 | Backend i base de dades | Convex | Dades, lògica de negoci, temps real i tasques programades |
 | Autenticació | Convex Auth (`@convex-dev/auth`) | Registre i login (US1.1, US1.2) |
 | Hosting | Cloudflare Workers (static assets) | Servir el frontend |
-| Tests | Vitest + `convex-test` + Testing Library (jsdom) | Tests del frontend, dels components i de les funcions de Convex |
+| Tests | Vitest + `convex-test` + Testing Library (jsdom) + Playwright (E2E) | Tests del frontend, dels components i de les funcions de Convex |
 | Gestor de paquets | npm | **Només npm.** No feu servir pnpm, yarn ni bun |
 
 No s'afegeixen llibreries noves sense comentar-ho abans a l'equip.
@@ -98,6 +98,7 @@ Obre l'adreça que surt a la terminal (normalment `http://localhost:5173`).
 | `npm run build` | Compila el frontend a `dist/` |
 | `npm run test` | Executa tots els tests |
 | `npm run test:coverage` | Executa els tests i mesura la cobertura (informe a `coverage/index.html`) |
+| `npm run test:e2e` | Tests E2E al navegador amb Playwright (arrenca `npm run dev`; cal Convex en marxa) |
 | `npm run lint` | Revisa l'estil del codi (ESLint) |
 | `npm run typecheck` | Comprova els tipus de TypeScript |
 
@@ -331,6 +332,7 @@ git push -u origin feature/US2.1-transaction-form
 - Els components de React es proven amb Testing Library en un DOM simulat (jsdom). El fitxer acaba en `.test.tsx` i comença amb `// @vitest-environment jsdom`. Busca els elements com ho faria l'usuari (`getByRole`, `getByText`) i fes clic amb `userEvent`. Exemples: `BudgetProgressRow.test.tsx` i `GroupSettleUp.test.tsx`.
 - Cada criteri d'acceptació d'una història hauria de tenir almenys un test que el comprovi.
 - El CI executa `lint`, `typecheck` i `test:coverage` a cada pull request. Si falla, no es fusiona.
+- **E2E (Playwright):** a `e2e/` hi ha el recorregut complet d'un usuari en un navegador real (registre → moviment → pressupost → grup → saldar deute, amb dos usuaris). En local s'executa amb `npm run test:e2e` contra el teu Convex de desenvolupament; la primera vegada cal `npx playwright install chromium`. Al CI s'executa contra staging després de cada desplegament (`deploy-staging.yml`), i l'informe es desa com a artefacte (`playwright-report`).
 - **Cobertura:** el CI publica la taula de cobertura per àrees a la pestanya *Summary* de l'execució i desa l'informe HTML com a artefacte (`coverage-report`). Si la cobertura baixa dels mínims de `vite.config.ts` (`coverage.thresholds`), el CI falla.
 
 ### Definition of Done
