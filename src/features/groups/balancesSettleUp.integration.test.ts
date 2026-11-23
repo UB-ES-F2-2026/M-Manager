@@ -5,7 +5,7 @@ import { ConvexError, type Value } from "convex/values";
 import { describe, expect, it } from "vitest";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { TRANSFER_NOT_PENDING_MESSAGE } from "../../../convex/groups";
+import { GROUP_NOT_FOUND_MESSAGE, TRANSFER_NOT_PENDING_MESSAGE } from "../../../convex/groups";
 import type { SplitMode } from "../../../convex/lib/splitModes";
 import schema from "../../../convex/schema";
 import {
@@ -14,15 +14,18 @@ import {
   suggestedShares,
   type GroupMember,
 } from "./hooks/useGroupExpenseForm";
+import { attemptSettleDebt, type SettleDebtMutation } from "./hooks/useSettleDebt";
+import { balanceStatus, transferSummary } from "./settleDebtTexts";
 
 // US4.3 · Qui deu a qui — integration / acceptance tests.
 //
-// The unit tests check the algorithm alone (convex/lib/balances.test.ts) and
-// the backend tests check each function alone (groups.balances.test.ts,
-// groups.settle.test.ts). These tests follow whole stories instead: members
-// add expenses through the real form helpers of /groups/:groupId/expenses/new,
-// read «Balanços» and «Per saldar» from groups.getBalances, and press
-// «Saldar deute» on the cards with exactly the data the cards get.
+// The unit tests check each piece alone: the algorithm (convex/lib/balances.test.ts),
+// each backend function (groups.balances.test.ts, groups.settle.test.ts) and the
+// UI helpers with a mocked mutation (settleDebtTexts.test.ts, useSettleDebt.test.ts).
+// These tests follow whole stories instead: members add expenses through the
+// real form helpers of /groups/:groupId/expenses/new, read «Balanços» and
+// «Per saldar» from groups.getBalances with the texts the screen shows, and
+// confirm «Saldar deute» through the same attemptSettleDebt the dialog uses.
 
 const modules = import.meta.glob("../../../convex/**/!(*.*.*)*.*s");
 
@@ -110,14 +113,35 @@ async function balancesSeenBy(member: Member, groupId: Id<"groups">): Promise<Ba
   return result;
 }
 
-/** «Confirmar pagament» on a «Per saldar» card: sends what the card shows. */
-function settleCard(member: Member, groupId: Id<"groups">, card: Card) {
-  return member.client.mutation(api.groups.settleDebt, {
-    groupId,
-    fromUserId: card.fromUserId,
-    toUserId: card.toUserId,
-    amountCents: card.amountCents,
-  });
+/**
+ * convex-test hands ConvexError data back as a JSON string, while the browser
+ * client (convex/react) parses it. This parses it too, so the frontend helpers
+ * get exactly the error they get in the app.
+ */
+function asBrowserError(error: unknown): unknown {
+  if (error instanceof ConvexError && typeof error.data === "string") {
+    return new ConvexError(JSON.parse(error.data) as Value);
+  }
+  return error;
+}
+
+/** groups.settleDebt as useMutation gives it to useSettleDebt, for this member. */
+function settleDebtAs(member: Member): SettleDebtMutation {
+  return async (args) => {
+    try {
+      return await member.client.mutation(api.groups.settleDebt, args);
+    } catch (error) {
+      throw asBrowserError(error);
+    }
+  };
+}
+
+/**
+ * «Confirmar pagament» in the «Saldar deute» dialog of a card: what
+ * useSettleDebt runs. Null when it worked, or the message the dialog shows.
+ */
+function confirmCard(member: Member, groupId: Id<"groups">, card: Card) {
+  return attemptSettleDebt(settleDebtAs(member), groupId, card);
 }
 
 /** Balance of each member by name, e.g. { Ana: 5000, Bert: -1000 }. */
@@ -125,29 +149,20 @@ function balanceByName(result: Balances): Record<string, number> {
   return Object.fromEntries(result.balances.map((row) => [row.name, row.balanceCents]));
 }
 
-/** «Per saldar» cards as the user reads them: «Bert paga a Ana» + cents. */
-function cardsOf(result: Balances): string[] {
-  return result.transfers.map((card) => `${card.fromName} → ${card.toName}: ${card.amountCents}`);
+/** «Balanços» labels as the rows show them, e.g. { Ana: "Li deuen" }. */
+function labelByName(result: Balances): Record<string, string> {
+  return Object.fromEntries(
+    result.balances.map((row) => [row.name, balanceStatus(row.balanceCents).label]),
+  );
+}
+
+/** «Per saldar» cards as the screen reads them: «Bert paga a Ana» + cents. */
+function cardsOf(result: Pick<Balances, "transfers">): string[] {
+  return result.transfers.map((card) => `${transferSummary(card)}: ${card.amountCents}`);
 }
 
 function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
-}
-
-/**
- * The error a failing call gives the dialog. convex-test hands ConvexError
- * data back as a JSON string, while the browser client (convex/react) parses
- * it, so this parses it too.
- */
-async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
-  const error: unknown = await promise.then(
-    () => expect.fail("Expected the call to fail"),
-    (rejection: unknown) => rejection,
-  );
-  if (error instanceof ConvexError && typeof error.data === "string") {
-    return new ConvexError(JSON.parse(error.data) as Value);
-  }
-  return error;
 }
 
 describe("US4.3 AC1 · «Balanços»: què ha pagat i què li toca a cadascú", () => {
@@ -162,6 +177,7 @@ describe("US4.3 AC1 · «Balanços»: què ha pagat i què li toca a cadascú", 
     const result = await balancesSeenBy(ana, groupId);
     // Ana: 90 − 30 − 10 = +50 · Bert: 30 − 30 − 10 = −10 · Carla: −30 − 10 = −40.
     expect(balanceByName(result)).toEqual({ Ana: 5000, Bert: -1000, Carla: -4000 });
+    expect(labelByName(result)).toEqual({ Ana: "Li deuen", Bert: "Deu", Carla: "Deu" });
     expect(sum(result.balances.map((row) => row.balanceCents))).toBe(0);
   });
 
@@ -195,7 +211,7 @@ describe("US4.3 AC1 · «Balanços»: què ha pagat i què li toca a cadascú", 
     const result = await balancesSeenBy(carla, groupId);
     // Ana: −30 − 5 = −35 · Bert: 60 − 15 − 15 = +30 · Carla: 20 − 15 = +5.
     expect(balanceByName(result)).toEqual({ Ana: -3500, Bert: 3000, Carla: 500 });
-    expect(cardsOf(result)).toEqual(["Ana → Bert: 3000", "Ana → Carla: 500"]);
+    expect(cardsOf(result)).toEqual(["Ana paga a Bert: 3000", "Ana paga a Carla: 500"]);
   });
 
   it("an amount that cannot be split equally does not lose or create a cent", async () => {
@@ -239,7 +255,7 @@ describe("US4.3 AC2 · «Per saldar»: els mínims pagaments per quedar en pau",
 
     const result = await balancesSeenBy(bert, groupId);
 
-    expect(cardsOf(result)).toEqual(["Carla → Ana: 4000", "Bert → Ana: 1000"]);
+    expect(cardsOf(result)).toEqual(["Carla paga a Ana: 4000", "Bert paga a Ana: 1000"]);
   });
 
   it("chains debts: a member who paid and owes the same ends «En pau» and out of the cards", async () => {
@@ -253,8 +269,9 @@ describe("US4.3 AC2 · «Per saldar»: els mínims pagaments per quedar en pau",
 
     const result = await balancesSeenBy(ana, groupId);
     expect(balanceByName(result)).toEqual({ Ana: 1000, Bert: 0, Carla: -1000 });
+    expect(labelByName(result).Bert).toBe("En pau");
     // One payment instead of two: Carla pays Ana directly.
-    expect(cardsOf(result)).toEqual(["Carla → Ana: 1000"]);
+    expect(cardsOf(result)).toEqual(["Carla paga a Ana: 1000"]);
   });
 });
 
@@ -268,13 +285,15 @@ describe("US4.3 AC3 · «Saldar deute»", () => {
     const historyBefore = await ana.client.query(api.groups.listExpenses, { groupId });
 
     const [carlaPaysAna, bertPaysAna] = (await balancesSeenBy(ana, groupId)).transfers;
-    // Bert settles his own debt; Ana marks Carla's as received.
-    await settleCard(bert, groupId, bertPaysAna);
-    expect(cardsOf(await balancesSeenBy(ana, groupId))).toEqual(["Carla → Ana: 4000"]);
-    await settleCard(ana, groupId, carlaPaysAna);
+    // Bert settles his own debt; Ana marks Carla's as received. The dialog closes (null).
+    expect(await confirmCard(bert, groupId, bertPaysAna)).toBeNull();
+    expect(cardsOf(await balancesSeenBy(ana, groupId))).toEqual(["Carla paga a Ana: 4000"]);
+    expect(await confirmCard(ana, groupId, carlaPaysAna)).toBeNull();
 
     const after = await balancesSeenBy(bert, groupId);
     expect(balanceByName(after)).toEqual({ Ana: 0, Bert: 0, Carla: 0 });
+    expect(labelByName(after)).toEqual({ Ana: "En pau", Bert: "En pau", Carla: "En pau" });
+    // «No hi ha deutes pendents.»
     expect(after.transfers).toEqual([]);
     // Settlements do not show up in the history nor change any expense.
     expect(await ana.client.query(api.groups.listExpenses, { groupId })).toEqual(historyBefore);
@@ -287,7 +306,7 @@ describe("US4.3 AC3 · «Saldar deute»", () => {
     await payWithForm(ana, groupId, { concept: "Taxi", amount: "20,00", participants: [ana, bert] });
     const [bertPaysAna] = (await balancesSeenBy(carla, groupId)).transfers;
 
-    await settleCard(carla, groupId, bertPaysAna);
+    expect(await confirmCard(carla, groupId, bertPaysAna)).toBeNull();
 
     expect((await balancesSeenBy(ana, groupId)).transfers).toEqual([]);
     const [settlement] = await t.run((ctx) => ctx.db.query("groupSettlements").collect());
@@ -304,60 +323,70 @@ describe("US4.3 AC3 · «Saldar deute»", () => {
     const { groupId, members } = await groupWith(t, ["Ana", "Bert", "Carla"]);
     const [ana, bert, carla] = members;
     await payWithForm(ana, groupId, { concept: "Taxi", amount: "20,00", participants: [ana, bert] });
-    await settleCard(bert, groupId, (await balancesSeenBy(bert, groupId)).transfers[0]);
+    await confirmCard(bert, groupId, (await balancesSeenBy(bert, groupId)).transfers[0]);
 
     await payWithForm(carla, groupId, { concept: "Museu", amount: "24,00", participants: [ana, carla] });
 
     const result = await balancesSeenBy(ana, groupId);
     expect(balanceByName(result)).toEqual({ Ana: -1200, Bert: 0, Carla: 1200 });
-    expect(cardsOf(result)).toEqual(["Ana → Carla: 1200"]);
+    expect(cardsOf(result)).toEqual(["Ana paga a Carla: 1200"]);
   });
 
-  it("a card that changed while the dialog was open is rejected with the message for the dialog", async () => {
+  it("a card that changed while the dialog was open shows «Aquest deute ja no està pendent.»", async () => {
     const t = setup();
     const { groupId, members } = await groupWith(t, ["Ana", "Bert", "Carla"]);
     const [ana, bert, carla] = members;
     await payWithForm(ana, groupId, { concept: "Taxi", amount: "30,00", participants: [ana, bert] });
-    // Bert opens «Bert paga a Ana · 15,00 €»…
+    // Bert opens the dialog of «Bert paga a Ana · 15,00 €»…
     const [staleCard] = (await balancesSeenBy(bert, groupId)).transfers;
-    expect(cardsOf({ balances: [], transfers: [staleCard] })).toEqual(["Bert → Ana: 1500"]);
+    expect(cardsOf({ transfers: [staleCard] })).toEqual(["Bert paga a Ana: 1500"]);
 
-    // …meanwhile Carla adds a dinner, so the debts change.
+    // …meanwhile Carla adds a dinner, so the debts change, and then Bert confirms.
     await payWithForm(carla, groupId, { concept: "Sopar", amount: "20,00", participants: [ana, bert] });
-    const error = await rejectionOf(settleCard(bert, groupId, staleCard));
+    const dialogError = await confirmCard(bert, groupId, staleCard);
 
-    // useSettleDebt shows this message inside the dialog (#140).
-    expect(error).toBeInstanceOf(ConvexError);
-    expect((error as ConvexError<Value>).data).toEqual({
-      code: "TRANSFER_NOT_PENDING",
-      message: TRANSFER_NOT_PENDING_MESSAGE,
-    });
+    expect(dialogError).toBe(TRANSFER_NOT_PENDING_MESSAGE);
     expect(await t.run((ctx) => ctx.db.query("groupSettlements").collect())).toEqual([]);
 
     // The new cards can be settled and everyone ends «En pau».
     const fresh = await balancesSeenBy(bert, groupId);
-    expect(cardsOf(fresh)).toEqual(["Bert → Carla: 2000", "Bert → Ana: 500"]);
+    expect(cardsOf(fresh)).toEqual(["Bert paga a Carla: 2000", "Bert paga a Ana: 500"]);
     for (const card of fresh.transfers) {
-      await settleCard(bert, groupId, card);
+      expect(await confirmCard(bert, groupId, card)).toBeNull();
     }
     expect(Object.values(balanceByName(await balancesSeenBy(ana, groupId)))).toEqual([0, 0, 0]);
   });
 
-  it("two members confirming the same card at once only record one payment", async () => {
+  it("two members confirming the same card at once: one closes the dialog, the other sees why", async () => {
     const t = setup();
     const { groupId, members } = await groupWith(t, ["Ana", "Bert", "Carla"]);
     const [ana, bert] = members;
     await payWithForm(ana, groupId, { concept: "Taxi", amount: "20,00", participants: [ana, bert] });
     const [card] = (await balancesSeenBy(ana, groupId)).transfers;
 
-    const results = await Promise.allSettled([
-      settleCard(ana, groupId, card),
-      settleCard(bert, groupId, card),
+    const dialogs = await Promise.all([
+      confirmCard(ana, groupId, card),
+      confirmCard(bert, groupId, card),
     ]);
 
-    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(dialogs).toHaveLength(2);
+    expect(dialogs).toContain(null);
+    expect(dialogs).toContain(TRANSFER_NOT_PENDING_MESSAGE);
     expect(await t.run((ctx) => ctx.db.query("groupSettlements").collect())).toHaveLength(1);
     expect(balanceByName(await balancesSeenBy(bert, groupId))).toEqual({ Ana: 0, Bert: 0, Carla: 0 });
+  });
+
+  it("someone outside the group gets «No s'ha trobat el grup.» and cannot settle", async () => {
+    const t = setup();
+    const { groupId, members } = await groupWith(t, ["Ana", "Bert"]);
+    const [ana, bert] = members;
+    const outsider = await signedInAs(t, "Dani");
+    await payWithForm(ana, groupId, { concept: "Taxi", amount: "20,00" });
+    const [card] = (await balancesSeenBy(bert, groupId)).transfers;
+
+    expect(await outsider.client.query(api.groups.getBalances, { groupId })).toBeNull();
+    expect(await confirmCard(outsider, groupId, card)).toBe(GROUP_NOT_FOUND_MESSAGE);
+    expect(await t.run((ctx) => ctx.db.query("groupSettlements").collect())).toEqual([]);
   });
 });
 
@@ -404,7 +433,7 @@ describe("US4.3 · regressió amb un grup gran", () => {
     expect(before.transfers.every((card) => card.amountCents > 0)).toBe(true);
 
     for (const [index, card] of before.transfers.entries()) {
-      await settleCard(members[index % members.length], groupId, card);
+      expect(await confirmCard(members[index % members.length], groupId, card)).toBeNull();
     }
 
     const after = await balancesSeenBy(members[4], groupId);
