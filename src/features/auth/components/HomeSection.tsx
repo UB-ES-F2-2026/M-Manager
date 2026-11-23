@@ -31,7 +31,7 @@ export default function HomeSection({ title, action, children }: HomeSectionProp
               type="button"
               disabled
               title="Properament"
-              className="text-sm font-medium text-primary disabled:cursor-not-allowed"
+              className="text-sm font-medium text-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {action.label}
             </button>

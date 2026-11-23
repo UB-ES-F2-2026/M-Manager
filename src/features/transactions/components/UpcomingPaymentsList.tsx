@@ -33,8 +33,10 @@ export default function UpcomingPaymentsList({ payments, nowMs }: UpcomingPaymen
     );
   }
 
+  // Fades in when the list first appears (starting: = @starting-style), not on
+  // every reactive update, because the <ul> stays mounted (AC2).
   return (
-    <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white transition-opacity duration-200 ease-out starting:opacity-0">
       {selectHomeUpcomingPayments(payments).map((payment) => {
         const isIncome = payment.type === "income";
         return (
