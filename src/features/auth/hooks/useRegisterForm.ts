@@ -1,13 +1,14 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { ConvexError } from "convex/values";
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   assertValidEmail,
   assertValidName,
   assertValidPassword,
   EMAIL_TAKEN_MESSAGE,
 } from "../../../../convex/lib/validation";
+import { redirectPathAfterAuth } from "../redirectAfterAuth";
 
 export const REQUIRED_FIELD_MESSAGE = "Aquest camp és obligatori";
 export { EMAIL_TAKEN_MESSAGE };
@@ -121,6 +122,7 @@ function isCodedError(data: unknown): data is { code: string; message: string } 
 export function useRegisterForm() {
   const { signIn } = useAuthActions();
   const navigate = useNavigate();
+  const location = useLocation();
   const [fields, setFields] = useState<RegisterFields>({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<RegisterErrors>({ fieldErrors: {} });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -151,8 +153,9 @@ export function useRegisterForm() {
         password: fields.password,
         flow: "signUp",
       });
-      // Sign-up also signs the user in, so they go straight to the main screen.
-      navigate("/", { replace: true });
+      // Sign-up also signs the user in, so they go straight to the main screen,
+      // or back to the page that asked for the session.
+      navigate(redirectPathAfterAuth(location.state), { replace: true });
     } catch (error) {
       setErrors(getRegisterErrors(error));
       setIsSubmitting(false);
