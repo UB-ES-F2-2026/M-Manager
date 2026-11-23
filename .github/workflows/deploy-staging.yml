@@ -48,3 +48,23 @@ jobs:
         run: |
           curl --fail --silent --show-error --retry 5 --retry-delay 5 "$STAGING_URL/" | grep -q '<div id="root">'
           curl --fail --silent --show-error --output /dev/null "$STAGING_URL/login"
+
+      # Full user journey in a real browser against the staging deployment
+      # (register → expense → budget → group → settle up). See e2e/.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+        env:
+          E2E_BASE_URL: ${{ env.STAGING_URL }}
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
