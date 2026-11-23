@@ -6,6 +6,11 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import EditBudgetPage from "./features/budgets/pages/EditBudgetPage";
 import NewBudgetPage from "./features/budgets/pages/NewBudgetPage";
+import GroupDetailPage from "./features/groups/pages/GroupDetailPage";
+import GroupsPage from "./features/groups/pages/GroupsPage";
+import JoinGroupPage from "./features/groups/pages/JoinGroupPage";
+import NewGroupExpensePage from "./features/groups/pages/NewGroupExpensePage";
+import NewGroupPage from "./features/groups/pages/NewGroupPage";
 import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
 import BudgetsPage from "./features/budgets/pages/BudgetsPage";
@@ -73,6 +78,38 @@ export default function App() {
         }
       />
       <Route
+        path="/groups"
+        element={
+          <RequireSession>
+            <GroupsPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/new"
+        element={
+          <RequireSession>
+            <NewGroupPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/join"
+        element={
+          <RequireSession>
+            <JoinGroupPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/:groupId"
+        element={
+          <RequireSession>
+            <GroupDetailPage />
+          </RequireSession>
+        }
+      />
+      <Route
         path="/net-worth/new"
         element={
           <RequireSession>
@@ -109,6 +146,14 @@ export default function App() {
         element={
           <RequireSession>
             <EditBudgetPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/:groupId/expenses/new"
+        element={
+          <RequireSession>
+            <NewGroupExpensePage />
           </RequireSession>
         }
       />

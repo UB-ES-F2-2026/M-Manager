@@ -15,6 +15,12 @@ export const ASSET_TYPES = [
 
 export type AssetType = (typeof ASSET_TYPES)[number];
 
+/**
+ * Asset types that count as available liquidity (US3.3): money in accounts
+ * and cash. Investments, real estate, vehicles and other assets do not.
+ */
+export const LIQUID_ASSET_TYPES: readonly AssetType[] = ["bankAccount", "cash"];
+
 /** Convex validator for `assets.type`. Keep in sync with ASSET_TYPES. */
 export const assetTypeValidator = v.union(
   v.literal("bankAccount"),
