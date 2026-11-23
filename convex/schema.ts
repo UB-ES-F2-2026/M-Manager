@@ -2,6 +2,7 @@ import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { assetTypeValidator } from "./lib/assetTypes";
+import { budgetCategoryValidator } from "./lib/budgetCategories";
 import { groupRoleValidator } from "./lib/groupRoles";
 import { splitModeValidator } from "./lib/splitModes";
 import { transactionCategoryValidator } from "./lib/transactionCategories";
@@ -9,7 +10,7 @@ import { transactionCategoryValidator } from "./lib/transactionCategories";
 /**
  * Database schema (source of truth).
  * Auth tables + user profile fields (name, email) + transactions (US2.1)
- * + assets and debts (US3.2) + groups and their members (US4.1)
+ * + assets and debts (US3.2) + budgets (US3.1) + groups and their members (US4.1)
  * + shared group expenses (US4.2) + settlements between members (US4.3).
  */
 export default defineSchema({
@@ -66,6 +67,18 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_and_dueDate", ["userId", "dueDate"]),
+
+  /**
+   * Monthly spending limit for one expense category, owned by a single user (US3.1).
+   * At most one budget per (userId, category): enforced in the mutations using
+   * the `by_user_and_category` index, which also serves "all budgets of a user".
+   * The limit is always positive cents in `amountCents`.
+   */
+  budgets: defineTable({
+    userId: v.id("users"),
+    category: budgetCategoryValidator,
+    amountCents: v.number(),
+  }).index("by_user_and_category", ["userId", "category"]),
 
   /**
    * Shared-expense group (US4.1). Who belongs to it lives in `groupMembers`.

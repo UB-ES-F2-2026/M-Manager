@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
 import { PlusIcon } from "../../../components/ui/icons";
+import HomeBudgetSummary from "../../budgets/components/HomeBudgetSummary";
 import NetWorthList from "../../net-worth/components/NetWorthList";
 import NetWorthSummaryCard from "../../net-worth/components/NetWorthSummaryCard";
 import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
@@ -16,7 +17,8 @@ import TransactionList from "../components/TransactionList";
 
 /**
  * Main screen. Net worth and liquidity (US3.3), monthly savings (US2.4),
- * recent movements (US2.3) and assets / debts (US3.2) come from Convex.
+ * recent movements (US2.3), assets / debts (US3.2) and budgets (US3.1) come
+ * from Convex.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
@@ -26,6 +28,7 @@ export default function HomePage() {
   const [now] = useState(() => Date.now());
   const monthBounds = getMonthBounds(now);
   const savings = useQuery(api.transactions.monthlySavings, monthBounds);
+  const budgets = useQuery(api.budgets.list, monthBounds);
 
   if (!user) {
     return <SessionLoading />;
@@ -71,6 +74,9 @@ export default function HomePage() {
           <PlusIcon className="size-4" />
           Afegir un actiu o un deute
         </Link>
+        <HomeSection title="Pressupostos" action={{ label: "Veure'ls tots", to: "/budgets" }}>
+          <HomeBudgetSummary budgets={budgets} />
+        </HomeSection>
         <HomeSection
           title="Últims moviments"
           action={{ label: "Veure'ls tots", to: "/transactions" }}

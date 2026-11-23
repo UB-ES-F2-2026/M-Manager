@@ -9,11 +9,13 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as budgets from "../budgets.js";
 import type * as groups from "../groups.js";
 import type * as http from "../http.js";
 import type * as lib_assetTypes from "../lib/assetTypes.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_balances from "../lib/balances.js";
+import type * as lib_budgetCategories from "../lib/budgetCategories.js";
 import type * as lib_dateRange from "../lib/dateRange.js";
 import type * as lib_groupCodes from "../lib/groupCodes.js";
 import type * as lib_groupRoles from "../lib/groupRoles.js";
@@ -34,11 +36,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  budgets: typeof budgets;
   groups: typeof groups;
   http: typeof http;
   "lib/assetTypes": typeof lib_assetTypes;
   "lib/auth": typeof lib_auth;
   "lib/balances": typeof lib_balances;
+  "lib/budgetCategories": typeof lib_budgetCategories;
   "lib/dateRange": typeof lib_dateRange;
   "lib/groupCodes": typeof lib_groupCodes;
   "lib/groupRoles": typeof lib_groupRoles;
