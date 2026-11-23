@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { NAV_ITEMS } from "./navItems";
+import { isExactNavMatch, NAV_ITEMS } from "./navItems";
 
 /** Bottom tab bar of the app screens. */
 export default function BottomNav() {
@@ -13,7 +13,7 @@ export default function BottomNav() {
           <li key={label} className="flex flex-1">
             <NavLink
               to={to}
-              end
+              end={isExactNavMatch(to)}
               className={({ isActive }) =>
                 `flex flex-1 flex-col items-center gap-1 py-2.5 text-xs ${
                   isActive ? "text-primary" : "text-slate-500"
