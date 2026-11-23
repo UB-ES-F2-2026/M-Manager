@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { HomeIcon, TransferIcon } from "../ui/icons";
+import { CardIcon, HomeIcon, TransferIcon } from "../ui/icons";
 
 export type NavItem = {
   label: string;
@@ -13,5 +13,14 @@ export type NavItem = {
  */
 export const NAV_ITEMS: NavItem[] = [
   { label: "Inici", icon: HomeIcon, to: "/" },
+  { label: "Grups", icon: CardIcon, to: "/groups" },
   { label: "Moviments", icon: TransferIcon, to: "/transactions" },
 ];
+
+/**
+ * Whether the tab only lights up on its exact path. Home must, or it would be
+ * active everywhere; the rest stay active on their sub-screens (/groups/:id).
+ */
+export function isExactNavMatch(to: string): boolean {
+  return to === "/";
+}

@@ -5,6 +5,8 @@ import HomePage from "./features/auth/pages/HomePage";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import GroupDetailPage from "./features/groups/pages/GroupDetailPage";
+import GroupsPage from "./features/groups/pages/GroupsPage";
+import NewGroupPage from "./features/groups/pages/NewGroupPage";
 import EditNetWorthItemPage from "./features/net-worth/pages/EditNetWorthItemPage";
 import NewNetWorthItemPage from "./features/net-worth/pages/NewNetWorthItemPage";
 import EditTransactionPage from "./features/transactions/pages/EditTransactionPage";
@@ -59,6 +61,22 @@ export default function App() {
         element={
           <RequireSession>
             <EditTransactionPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups"
+        element={
+          <RequireSession>
+            <GroupsPage />
+          </RequireSession>
+        }
+      />
+      <Route
+        path="/groups/new"
+        element={
+          <RequireSession>
+            <NewGroupPage />
           </RequireSession>
         }
       />
