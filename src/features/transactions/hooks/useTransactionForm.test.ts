@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { TRANSACTION_CATEGORIES } from "../../../../convex/lib/transactionCategories";
 import { CATEGORY_LABELS } from "../categoryLabels";
+import { DAY_OF_MONTH_MESSAGE } from "../../../../convex/lib/recurrenceFrequencies";
 import {
+  applyFieldChange,
   emptyTransactionFields,
   getTransactionErrors,
   INVALID_AMOUNT_FORMAT_MESSAGE,
@@ -12,6 +14,7 @@ import {
   NOT_FOUND_ALERT,
   parseDateInput,
   parseTransactionFields,
+  recurrenceUpdateArg,
   REQUIRED_FIELD_MESSAGE,
   SAVE_ERROR_ALERT,
   toAmountInputValue,
@@ -29,6 +32,9 @@ const VALID_FIELDS: TransactionFields = {
   date: "2026-10-28",
   category: "groceries",
   concept: "  Compra setmanal  ",
+  isRecurring: false,
+  frequency: "monthly",
+  dayOfMonth: "",
 };
 
 describe("toDateInputValue", () => {
@@ -67,6 +73,9 @@ describe("emptyTransactionFields", () => {
       date: "2026-11-01",
       category: "",
       concept: "",
+      isRecurring: false,
+      frequency: "monthly",
+      dayOfMonth: "",
     });
   });
 });
@@ -81,6 +90,7 @@ describe("parseTransactionFields", () => {
         category: "groceries",
         concept: "Compra setmanal",
       },
+      recurrence: null,
       errors: {},
     });
   });
@@ -96,11 +106,12 @@ describe("parseTransactionFields", () => {
   it("marks every empty field", () => {
     expect(
       parseTransactionFields(
-        { type: "expense", amount: " ", date: "", category: "", concept: "   " },
+        { ...VALID_FIELDS, amount: " ", date: "", category: "", concept: "   " },
         NOW,
       ),
     ).toEqual({
       args: null,
+      recurrence: null,
       errors: {
         amount: REQUIRED_FIELD_MESSAGE,
         date: REQUIRED_FIELD_MESSAGE,
@@ -147,6 +158,13 @@ describe("getTransactionErrors", () => {
     expect(getTransactionErrors(error)).toEqual({ fieldErrors: {}, alert: NOT_FOUND_ALERT });
   });
 
+  it("shows the backend day error under the payment day field", () => {
+    const error = new ConvexError({ code: "INVALID_DAY_OF_MONTH", message: DAY_OF_MONTH_MESSAGE });
+    expect(getTransactionErrors(error)).toEqual({
+      fieldErrors: { dayOfMonth: DAY_OF_MONTH_MESSAGE },
+    });
+  });
+
   it("falls back to a general alert for any other failure", () => {
     expect(getTransactionErrors(new Error("Server Error"))).toEqual({
       fieldErrors: {},
@@ -185,6 +203,20 @@ describe("transactionToFields", () => {
       date: "2026-10-28",
       category: "groceries",
       concept: "Supermercat",
+      isRecurring: false,
+      frequency: "monthly",
+      dayOfMonth: "",
+    });
+  });
+
+  it("starts with the switch on and the saved values of a recurrent transaction", () => {
+    expect(
+      transactionToFields(STORED, { frequency: "yearly", dayOfMonth: 15, monthOfYear: 10 }),
+    ).toMatchObject({ isRecurring: true, frequency: "yearly", dayOfMonth: "15" });
+    expect(transactionToFields(STORED, null)).toMatchObject({
+      isRecurring: false,
+      frequency: "monthly",
+      dayOfMonth: "",
     });
   });
 
@@ -212,5 +244,87 @@ describe("CATEGORY_LABELS", () => {
       expect(CATEGORY_LABELS[category]).toEqual(expect.any(String));
     }
     expect(Object.keys(CATEGORY_LABELS)).toHaveLength(TRANSACTION_CATEGORIES.length);
+  });
+});
+
+describe("parseTransactionFields · recurrence (US2.5)", () => {
+  const RECURRENT: TransactionFields = {
+    ...VALID_FIELDS,
+    isRecurring: true,
+    frequency: "yearly",
+    dayOfMonth: "5",
+  };
+
+  it("returns the frequency, the day and the month of the date when the switch is on", () => {
+    const { args, recurrence, errors } = parseTransactionFields(RECURRENT, NOW);
+    expect(errors).toEqual({});
+    expect(args).not.toBeNull();
+    // VALID_FIELDS.date is 2026-10-28 → October.
+    expect(recurrence).toEqual({ frequency: "yearly", dayOfMonth: 5, monthOfYear: 10 });
+  });
+
+  it("ignores frequency and day while the switch is off", () => {
+    const { args, recurrence, errors } = parseTransactionFields(
+      { ...RECURRENT, isRecurring: false, dayOfMonth: "99" },
+      NOW,
+    );
+    expect(errors).toEqual({});
+    expect(args).not.toBeNull();
+    expect(recurrence).toBeNull();
+  });
+
+  it("rejects an empty, out of range or non-integer day", () => {
+    for (const dayOfMonth of ["", "0", "29", "2,5", "abc"]) {
+      expect(parseTransactionFields({ ...RECURRENT, dayOfMonth }, NOW)).toEqual({
+        args: null,
+        recurrence: null,
+        errors: { dayOfMonth: DAY_OF_MONTH_MESSAGE },
+      });
+    }
+  });
+});
+
+describe("applyFieldChange", () => {
+  it("starts as Mensual with the day of the date when the switch is turned on", () => {
+    const fields = { ...VALID_FIELDS, date: "2026-11-05", frequency: "yearly" as const };
+    expect(applyFieldChange(fields, "isRecurring", true)).toMatchObject({
+      isRecurring: true,
+      frequency: "monthly",
+      dayOfMonth: "5",
+    });
+  });
+
+  it("caps the starting day at 28", () => {
+    const fields = { ...VALID_FIELDS, date: "2026-10-31" };
+    expect(applyFieldChange(fields, "isRecurring", true).dayOfMonth).toBe("28");
+  });
+
+  it("keeps the values typed by the user while the switch stays on", () => {
+    const fields = applyFieldChange({ ...VALID_FIELDS, date: "2026-11-05" }, "isRecurring", true);
+    const edited = applyFieldChange(fields, "dayOfMonth", "20");
+    expect(applyFieldChange(edited, "date", "2026-11-09").dayOfMonth).toBe("20");
+    expect(applyFieldChange(edited, "isRecurring", true).dayOfMonth).toBe("20");
+  });
+
+  it("turns the switch off without losing the other fields", () => {
+    const on = applyFieldChange(VALID_FIELDS, "isRecurring", true);
+    expect(applyFieldChange(on, "isRecurring", false)).toEqual({ ...on, isRecurring: false });
+  });
+});
+
+describe("recurrenceUpdateArg", () => {
+  const RULE = { frequency: "monthly" as const, dayOfMonth: 5, monthOfYear: 11 };
+
+  it("sends the rule while the switch is on", () => {
+    expect(recurrenceUpdateArg(RULE, false)).toEqual(RULE);
+    expect(recurrenceUpdateArg(RULE, true)).toEqual(RULE);
+  });
+
+  it("sends null to remove the rule when a recurrent transaction is switched off", () => {
+    expect(recurrenceUpdateArg(null, true)).toBeNull();
+  });
+
+  it("leaves the recurrence untouched when the transaction was never recurrent", () => {
+    expect(recurrenceUpdateArg(null, false)).toBeUndefined();
   });
 });

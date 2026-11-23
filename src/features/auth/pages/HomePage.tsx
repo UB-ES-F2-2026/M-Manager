@@ -8,7 +8,9 @@ import HomeBudgetSummary from "../../budgets/components/HomeBudgetSummary";
 import NetWorthList from "../../net-worth/components/NetWorthList";
 import NetWorthSummaryCard from "../../net-worth/components/NetWorthSummaryCard";
 import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
+import UpcomingPaymentsList from "../../transactions/components/UpcomingPaymentsList";
 import { selectRecentTransactions } from "../../transactions/selectRecentTransactions";
+import { getUpcomingRange } from "../../transactions/upcomingPayments";
 import HomeHeader from "../components/HomeHeader";
 import HomeSection from "../components/HomeSection";
 import MonthlySavingsCard from "../components/MonthlySavingsCard";
@@ -17,8 +19,8 @@ import TransactionList from "../components/TransactionList";
 
 /**
  * Main screen. Net worth and liquidity (US3.3), monthly savings (US2.4),
- * recent movements (US2.3), assets / debts (US3.2) and budgets (US3.1) come
- * from Convex.
+ * upcoming recurring payments (US2.5), recent movements (US2.3),
+ * assets / debts (US3.2) and budgets (US3.1) come from Convex.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
@@ -28,6 +30,7 @@ export default function HomePage() {
   const [now] = useState(() => Date.now());
   const monthBounds = getMonthBounds(now);
   const savings = useQuery(api.transactions.monthlySavings, monthBounds);
+  const upcomingPayments = useQuery(api.recurring.upcomingPayments, getUpcomingRange(now));
   const budgets = useQuery(api.budgets.list, monthBounds);
 
   if (!user) {
@@ -51,6 +54,9 @@ export default function HomePage() {
             monthLabel={formatMonthLabel(now)}
           />
         )}
+        <HomeSection title="Pròxims pagaments" action={{ label: "Veure'ls tots", disabled: true }}>
+          <UpcomingPaymentsList payments={upcomingPayments} nowMs={now} />
+        </HomeSection>
         <Link
           to="/transactions/new"
           className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"

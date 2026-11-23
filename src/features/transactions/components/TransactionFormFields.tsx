@@ -1,6 +1,7 @@
 import TextField from "../../../components/ui/TextField";
 import type { TransactionFieldErrors, TransactionFields } from "../hooks/useTransactionForm";
 import CategoryField from "./CategoryField";
+import RecurrenceFields from "./RecurrenceFields";
 import TransactionTypeToggle from "./TransactionTypeToggle";
 
 type TransactionFormFieldsProps = {
@@ -10,7 +11,10 @@ type TransactionFormFieldsProps = {
   setField: <K extends keyof TransactionFields>(name: K, value: TransactionFields[K]) => void;
 };
 
-/** Type, amount, date, category and concept inputs, shared by the new and edit screens. */
+/**
+ * Type, amount, date, category and concept inputs, and the recurrence switch (US2.5),
+ * shared by the new and edit screens.
+ */
 export default function TransactionFormFields({
   fields,
   fieldErrors,
@@ -60,6 +64,12 @@ export default function TransactionFormFields({
         onChange={(event) => setField("concept", event.target.value)}
         error={fieldErrors.concept}
         disabled={disabled}
+      />
+      <RecurrenceFields
+        fields={fields}
+        fieldErrors={fieldErrors}
+        disabled={disabled}
+        setField={setField}
       />
     </>
   );

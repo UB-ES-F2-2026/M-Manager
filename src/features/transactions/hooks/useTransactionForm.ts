@@ -5,11 +5,17 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import {
+  DAY_OF_MONTH_MESSAGE,
+  type RecurrenceFrequency,
+  type RecurrenceInput,
+} from "../../../../convex/lib/recurrenceFrequencies";
+import {
   TRANSACTION_CATEGORIES,
   type TransactionCategory,
 } from "../../../../convex/lib/transactionCategories";
 import { assertValidAmountCents } from "../../../../convex/lib/validation";
 import { parseMoney } from "../../../lib/money";
+import { defaultDayOfMonth, parseDayOfMonth } from "../recurrenceFields";
 
 export type FormAlertMessage = {
   title: string;
@@ -44,9 +50,14 @@ export type TransactionFields = {
   date: string;
   category: TransactionCategory | "";
   concept: string;
+  /** "Moviment recurrent" switch (US2.5). When off, frequency and day are ignored. */
+  isRecurring: boolean;
+  frequency: RecurrenceFrequency;
+  /** Payment day as typed, "1"–"28". */
+  dayOfMonth: string;
 };
 
-type ValidatedField = Exclude<keyof TransactionFields, "type">;
+type ValidatedField = Exclude<keyof TransactionFields, "type" | "isRecurring" | "frequency">;
 
 export type TransactionFieldErrors = Partial<Record<ValidatedField, string>>;
 
@@ -108,6 +119,9 @@ export function emptyTransactionFields(nowMs: number): TransactionFields {
     date: toDateInputValue(nowMs),
     category: "",
     concept: "",
+    isRecurring: false,
+    frequency: "monthly",
+    dayOfMonth: "",
   };
 }
 
@@ -116,15 +130,42 @@ export function toAmountInputValue(amountCents: number): string {
   return (amountCents / 100).toFixed(2).replace(".", ",");
 }
 
-/** Form values of a stored transaction, to start the edit form filled in. */
-export function transactionToFields(transaction: Doc<"transactions">): TransactionFields {
+/**
+ * Form values of a stored transaction, to start the edit form filled in.
+ * With its recurrence rule (`api.recurring.forTransaction`, US2.5) the switch
+ * starts on and shows the saved frequency and day.
+ */
+export function transactionToFields(
+  transaction: Doc<"transactions">,
+  recurrence?: RecurrenceInput | null,
+): TransactionFields {
   return {
     type: transaction.type,
     amount: toAmountInputValue(transaction.amountCents),
     date: toDateInputValue(transaction.date),
     category: transaction.category,
     concept: transaction.concept,
+    isRecurring: Boolean(recurrence),
+    frequency: recurrence?.frequency ?? "monthly",
+    dayOfMonth: recurrence ? String(recurrence.dayOfMonth) : "",
   };
+}
+
+/**
+ * New form values after the user changes one field. Turning the recurrence switch on
+ * starts it as "Mensual" with the payment day of the "Data" field (capped at 28).
+ */
+export function applyFieldChange<K extends keyof TransactionFields>(
+  fields: TransactionFields,
+  name: K,
+  value: TransactionFields[K],
+): TransactionFields {
+  const next = { ...fields, [name]: value };
+  if (name === "isRecurring" && value === true && !fields.isRecurring) {
+    next.frequency = "monthly";
+    next.dayOfMonth = defaultDayOfMonth(fields.date);
+  }
+  return next;
 }
 
 function isTransactionCategory(value: string): value is TransactionCategory {
@@ -158,11 +199,17 @@ function backendMessage(check: () => void): string | null {
 /**
  * Checks every field with the same rules as the backend and builds the
  * mutation arguments. `args` is null while there is any error.
+ * Frequency and day are only checked when the recurrence switch is on; then
+ * `recurrence` also carries the month of the date (needed for yearly rules).
  */
 export function parseTransactionFields(
   fields: TransactionFields,
   nowMs: number,
-): { args: CreateTransactionArgs | null; errors: TransactionFieldErrors } {
+): {
+  args: CreateTransactionArgs | null;
+  recurrence: RecurrenceInput | null;
+  errors: TransactionFieldErrors;
+} {
   const errors: TransactionFieldErrors = {};
 
   const amountCents = fields.amount.trim() === "" ? null : parseMoney(fields.amount);
@@ -194,12 +241,23 @@ export function parseTransactionFields(
     errors.concept = REQUIRED_FIELD_MESSAGE;
   }
 
-  if (Object.keys(errors).length > 0 || amountCents === null || date === null || category === null) {
-    return { args: null, errors };
+  const dayOfMonth = fields.isRecurring ? parseDayOfMonth(fields.dayOfMonth) : null;
+  if (fields.isRecurring && dayOfMonth === null) {
+    errors.dayOfMonth = DAY_OF_MONTH_MESSAGE;
   }
+
+  if (Object.keys(errors).length > 0 || amountCents === null || date === null || category === null) {
+    return { args: null, recurrence: null, errors };
+  }
+
+  const recurrence =
+    dayOfMonth === null
+      ? null
+      : { frequency: fields.frequency, dayOfMonth, monthOfYear: new Date(date).getMonth() + 1 };
 
   return {
     args: { type: fields.type, amountCents, date, category, concept },
+    recurrence,
     errors,
   };
 }
@@ -208,6 +266,7 @@ const FIELD_BY_ERROR_CODE: Record<string, ValidatedField> = {
   INVALID_AMOUNT: "amount",
   INVALID_DATE: "date",
   INVALID_CONCEPT: "concept",
+  INVALID_DAY_OF_MONTH: "dayOfMonth",
 };
 
 /** Turns an error from `api.transactions.create` or `update` into messages for the form. */
@@ -225,25 +284,51 @@ export function getTransactionErrors(error: unknown): TransactionErrors {
 }
 
 /**
- * Form state and submit logic for the new transaction screen (US2.1) and,
- * when `transaction` is given, for editing it (US2.2).
+ * `recurrence` argument of `api.transactions.update` (US2.5): the rule when the
+ * switch is on, null to remove a rule the transaction had, or undefined to leave
+ * it as it is (a transaction that was not recurrent and still is not).
  */
-export function useTransactionForm(transaction?: Doc<"transactions">) {
+export function recurrenceUpdateArg(
+  recurrence: RecurrenceInput | null,
+  wasRecurring: boolean,
+): RecurrenceInput | null | undefined {
+  if (recurrence) {
+    return recurrence;
+  }
+  return wasRecurring ? null : undefined;
+}
+
+/**
+ * Form state and submit logic for the new transaction screen (US2.1) and,
+ * when `transaction` is given, for editing it (US2.2). `savedRecurrence` is the
+ * transaction's saved rule, if any (US2.5).
+ */
+export function useTransactionForm(
+  transaction?: Doc<"transactions">,
+  savedRecurrence?: RecurrenceInput | null,
+) {
   const createTransaction = useMutation(api.transactions.create);
   const updateTransaction = useMutation(api.transactions.update);
   const navigate = useNavigate();
   const [fields, setFields] = useState<TransactionFields>(() =>
-    transaction ? transactionToFields(transaction) : emptyTransactionFields(Date.now()),
+    transaction
+      ? transactionToFields(transaction, savedRecurrence)
+      : emptyTransactionFields(Date.now()),
   );
   const [errors, setErrors] = useState<TransactionErrors>({ fieldErrors: {} });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function setField<K extends keyof TransactionFields>(name: K, value: TransactionFields[K]) {
-    setFields((current) => ({ ...current, [name]: value }));
-    // Clear the field's error as soon as the user starts fixing it.
+    setFields((current) => applyFieldChange(current, name, value));
+    // Clear the field's error as soon as the user starts fixing it. The switch also
+    // clears the day error, since the day is hidden and ignored while it is off.
     setErrors((current) => ({
       ...current,
-      fieldErrors: { ...current.fieldErrors, [name]: undefined },
+      fieldErrors: {
+        ...current.fieldErrors,
+        [name]: undefined,
+        ...(name === "isRecurring" ? { dayOfMonth: undefined } : {}),
+      },
     }));
   }
 
@@ -252,7 +337,7 @@ export function useTransactionForm(transaction?: Doc<"transactions">) {
 
     // When editing, keep the original time of day so the order within the day does not change.
     const timeOfDayMs = transaction ? transaction.date : Date.now();
-    const { args, errors: fieldErrors } = parseTransactionFields(fields, timeOfDayMs);
+    const { args, recurrence, errors: fieldErrors } = parseTransactionFields(fields, timeOfDayMs);
     setErrors({ fieldErrors });
     if (!args) {
       return;
@@ -261,9 +346,14 @@ export function useTransactionForm(transaction?: Doc<"transactions">) {
     setIsSubmitting(true);
     try {
       if (transaction) {
-        await updateTransaction({ transactionId: transaction._id, ...args });
+        const recurrenceArg = recurrenceUpdateArg(recurrence, Boolean(savedRecurrence));
+        await updateTransaction({
+          transactionId: transaction._id,
+          ...args,
+          ...(recurrenceArg === undefined ? {} : { recurrence: recurrenceArg }),
+        });
       } else {
-        await createTransaction(args);
+        await createTransaction(recurrence ? { ...args, recurrence } : args);
       }
       navigate("/", { replace: true });
     } catch (error) {
