@@ -2,17 +2,22 @@ import { useQuery } from "convex/react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
+import { PlusIcon } from "../../../components/ui/icons";
+import GroupExpenseHistory from "../components/GroupExpenseHistory";
 import GroupInviteCard from "../components/GroupInviteCard";
 import GroupMemberList from "../components/GroupMemberList";
+import { newGroupExpensePath } from "../groupExpensePaths";
 
 /**
  * US4.1: /groups/:groupId, the group with its invite code and members.
+ * US4.2: below them, «Afegir despesa» and the expense history.
  * `groups.get` returns null for a missing group and for one the user is not
  * in, so both show the same message and nobody learns that the group exists.
  */
 export default function GroupDetailPage() {
   const { groupId = "" } = useParams();
   const group = useQuery(api.groups.get, { groupId });
+  const expenses = useQuery(api.groups.listExpenses, { groupId });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -39,6 +44,14 @@ export default function GroupDetailPage() {
             </header>
             <GroupInviteCard code={group.code} />
             <GroupMemberList members={group.members} />
+            <Link
+              to={newGroupExpensePath(group._id)}
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
+            >
+              <PlusIcon className="size-5" />
+              Afegir despesa
+            </Link>
+            <GroupExpenseHistory expenses={expenses} />
           </>
         )}
       </main>
