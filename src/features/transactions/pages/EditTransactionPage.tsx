@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc } from "../../../../convex/_generated/dataModel";
+import type { RecurrenceInput } from "../../../../convex/lib/recurrenceFrequencies";
 import Button from "../../../components/ui/Button";
 import FormAlert from "../../../components/ui/FormAlert";
 import SessionLoading from "../../auth/components/SessionLoading";
@@ -10,13 +11,17 @@ import DeleteTransactionButton from "../components/DeleteTransactionButton";
 import TransactionFormFields from "../components/TransactionFormFields";
 import { useTransactionForm } from "../hooks/useTransactionForm";
 
-/** US2.2: edit one of the user's transactions, reached at /transactions/:transactionId/edit. */
+/**
+ * US2.2: edit one of the user's transactions, reached at /transactions/:transactionId/edit.
+ * Also loads its recurrence rule (US2.5) so the switch starts with the saved values.
+ */
 export default function EditTransactionPage() {
   const { transactionId = "" } = useParams();
   const navigate = useNavigate();
   const transaction = useQuery(api.transactions.get, { transactionId });
+  const recurrence = useQuery(api.recurring.forTransaction, { transactionId });
 
-  if (transaction === undefined) {
+  if (transaction === undefined || recurrence === undefined) {
     return <SessionLoading />;
   }
 
@@ -36,6 +41,7 @@ export default function EditTransactionPage() {
       {/* Navigates from here: deleting unmounts the form as soon as `get` returns null. */}
       <EditTransactionForm
         transaction={transaction}
+        recurrence={recurrence}
         onDeleted={() => navigate("/", { replace: true })}
       />
     </EditLayout>
@@ -61,12 +67,17 @@ function EditLayout({ children }: { children: ReactNode }) {
 /** Mounted only once the transaction has loaded, so the form starts filled in. */
 function EditTransactionForm({
   transaction,
+  recurrence,
   onDeleted,
 }: {
   transaction: Doc<"transactions">;
+  recurrence: RecurrenceInput | null;
   onDeleted: () => void;
 }) {
-  const { fields, errors, isSubmitting, setField, handleSubmit } = useTransactionForm(transaction);
+  const { fields, errors, isSubmitting, setField, handleSubmit } = useTransactionForm(
+    transaction,
+    recurrence,
+  );
   const { fieldErrors, alert } = errors;
 
   return (
