@@ -97,6 +97,7 @@ Obre l'adreça que surt a la terminal (normalment `http://localhost:5173`).
 | `npm run dev` | Arrenca el frontend en local |
 | `npm run build` | Compila el frontend a `dist/` |
 | `npm run test` | Executa tots els tests |
+| `npm run test:coverage` | Executa els tests i mesura la cobertura (informe a `coverage/index.html`) |
 | `npm run lint` | Revisa l'estil del codi (ESLint) |
 | `npm run typecheck` | Comprova els tipus de TypeScript |
 
@@ -328,7 +329,8 @@ git push -u origin feature/US2.1-transaction-form
 - Fitxers de test al costat del codi que proven: `money.ts` → `money.test.ts`.
 - Les funcions de Convex es proven amb `convex-test`.
 - Cada criteri d'acceptació d'una història hauria de tenir almenys un test que el comprovi.
-- El CI executa `lint`, `typecheck` i `test` a cada pull request. Si falla, no es fusiona.
+- El CI executa `lint`, `typecheck` i `test:coverage` a cada pull request. Si falla, no es fusiona.
+- **Cobertura:** el CI publica la taula de cobertura per àrees a la pestanya *Summary* de l'execució i desa l'informe HTML com a artefacte (`coverage-report`). Si la cobertura baixa dels mínims de `vite.config.ts` (`coverage.thresholds`), el CI falla.
 
 ### Definition of Done
 
