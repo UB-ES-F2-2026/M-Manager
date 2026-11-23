@@ -349,10 +349,14 @@ El desplegament el gestiona la persona de DevOps. La resta de l'equip no ha de t
 | Entorn | Branca | Convex | Cloudflare |
 |---|---|---|---|
 | Desenvolupament | La teva branca local | La teva base de dades personal (`npx convex dev`) | — (localhost) |
+| Proves (*staging*) | `develop` | Projecte Convex a part (`m-manager-staging`), amb dades pròpies | Worker `m-manager-staging` ([m-manager-staging.esgrupof2.workers.dev](https://m-manager-staging.esgrupof2.workers.dev)) |
 | Producció | `main` | Desplegament de producció | Worker de producció (enllaç de la demo) |
 
-- El desplegament es fa automàticament des del CI de GitHub en fusionar a `main`: primer `npx convex deploy --cmd "npm run build"` (desplega el backend i compila el frontend apuntant a producció) i després `npx wrangler deploy` (puja `dist/` a Cloudflare).
-- Les claus (`CONVEX_DEPLOY_KEY`, `CLOUDFLARE_API_TOKEN`) es guarden com a *secrets* de GitHub. **Mai al codi ni en un commit.**
+- **Staging** es desplega sol cada vegada que es fusiona alguna cosa a `develop` (`.github/workflows/deploy-staging.yml`). És on es prova cada història abans de portar-la a `main`. Té la seva pròpia base de dades: el que hi facis no afecta producció.
+- **Producció** es desplega sola en fusionar a `main` (`.github/workflows/deploy.yml`).
+- Tots dos es poden llançar també amb un botó: *Actions* → el workflow → *Run workflow*. A la pestanya *Environments* del repositori es veu quina versió hi ha a cada entorn.
+- Cada desplegament: `lint` · `typecheck` · `test`, després `npx convex deploy --cmd "npm run build"` (desplega el backend i compila el frontend apuntant al seu entorn), `npx wrangler deploy` (amb `--env staging` a staging) i, al final, un *smoke test* que comprova que la web respon.
+- Les claus (`CONVEX_DEPLOY_KEY`, `CONVEX_STAGING_DEPLOY_KEY`, `CLOUDFLARE_API_TOKEN`) es guarden com a *secrets* de GitHub. **Mai al codi ni en un commit.**
 - `wrangler.jsonc` serveix la carpeta `dist/` com a static assets, configurada en mode SPA perquè les rutes de React Router funcionin en recarregar la pàgina.
 
 ---

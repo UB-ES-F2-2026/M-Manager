@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import type { Doc } from "../../../../convex/_generated/dataModel";
+import { initialsFromLabel } from "../../../lib/initialsFromLabel";
 import { formatMoney } from "../../../lib/money";
 import { ASSET_TYPE_LABELS } from "../assetTypeLabels";
-import { initialsFromLabel } from "../initialsFromLabel";
 import { netWorthEditPath } from "../netWorthEditPath";
 
 type NetWorthListProps = {

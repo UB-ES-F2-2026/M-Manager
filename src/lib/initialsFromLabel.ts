@@ -1,4 +1,4 @@
-/** Two letters for the circular avatar next to an asset or debt name. */
+/** Two letters for a circular avatar next to a name (assets, debts, groups...). */
 export function initialsFromLabel(label: string): string {
   const parts = label.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) {
