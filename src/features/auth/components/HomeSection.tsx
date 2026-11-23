@@ -1,13 +1,17 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+/**
+ * "See all" control of a section: a link when its screen exists, or a
+ * disabled control with the «Properament» tooltip when the product asks to
+ * show it before the screen exists (e.g. «Pròxims pagaments», US2.5).
+ */
+export type HomeSectionAction = { label: string; to: string } | { label: string; disabled: true };
+
 type HomeSectionProps = {
   title: string;
-  /**
-   * "See all" link of the section. Only pass it when its screen exists:
-   * a control without functionality must not be shown.
-   */
-  action?: { label: string; to: string };
+  /** Leave it out when the section has no "see all" control at all. */
+  action?: HomeSectionAction;
   children: ReactNode;
 };
 
@@ -17,11 +21,21 @@ export default function HomeSection({ title, action, children }: HomeSectionProp
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        {action && (
-          <Link to={action.to} className="text-sm font-medium text-primary">
-            {action.label}
-          </Link>
-        )}
+        {action &&
+          ("to" in action ? (
+            <Link to={action.to} className="text-sm font-medium text-primary">
+              {action.label}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="Properament"
+              className="text-sm font-medium text-primary disabled:cursor-not-allowed"
+            >
+              {action.label}
+            </button>
+          ))}
       </div>
       {children}
     </section>

@@ -6,7 +6,9 @@ import BottomNav from "../../../components/layout/BottomNav";
 import { PlusIcon } from "../../../components/ui/icons";
 import NetWorthList from "../../net-worth/components/NetWorthList";
 import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
+import UpcomingPaymentsList from "../../transactions/components/UpcomingPaymentsList";
 import { selectRecentTransactions } from "../../transactions/selectRecentTransactions";
+import { getUpcomingRange } from "../../transactions/upcomingPayments";
 import BalanceCard from "../components/BalanceCard";
 import HomeHeader from "../components/HomeHeader";
 import HomeSection from "../components/HomeSection";
@@ -16,8 +18,9 @@ import TransactionList from "../components/TransactionList";
 import { SAMPLE_ACCOUNTS, SAMPLE_TOTAL_BALANCE_CENTS } from "../homeSampleData";
 
 /**
- * Main screen. Monthly savings (US2.4), recent movements (US2.3) and assets /
- * debts (US3.2) come from Convex; the total balance is still sample data for now.
+ * Main screen. Monthly savings (US2.4), upcoming recurring payments (US2.5),
+ * recent movements (US2.3) and assets / debts (US3.2) come from Convex; the
+ * total balance is still sample data for now.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
@@ -26,6 +29,7 @@ export default function HomePage() {
   const [now] = useState(() => Date.now());
   const monthBounds = getMonthBounds(now);
   const savings = useQuery(api.transactions.monthlySavings, monthBounds);
+  const upcomingPayments = useQuery(api.recurring.upcomingPayments, getUpcomingRange(now));
 
   if (!user) {
     return <SessionLoading />;
@@ -51,6 +55,9 @@ export default function HomePage() {
             monthLabel={formatMonthLabel(now)}
           />
         )}
+        <HomeSection title="Pròxims pagaments" action={{ label: "Veure'ls tots", disabled: true }}>
+          <UpcomingPaymentsList payments={upcomingPayments} nowMs={now} />
+        </HomeSection>
         <Link
           to="/transactions/new"
           className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
