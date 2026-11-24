@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { ASSET_TYPES, assetTypeValidator } from "./assetTypes";
+import {
+  ASSET_TYPES,
+  LIQUID_ASSET_TYPES,
+  assetTypeValidator,
+} from "./assetTypes";
+
+describe("LIQUID_ASSET_TYPES", () => {
+  it("counts only bank accounts and cash as liquidity", () => {
+    expect(LIQUID_ASSET_TYPES).toEqual(["bankAccount", "cash"]);
+  });
+});
 
 describe("ASSET_TYPES", () => {
   it("lists a fixed set of asset types", () => {

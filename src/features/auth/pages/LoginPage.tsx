@@ -1,9 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import LoginForm from "../components/LoginForm";
 
 /** US1.2: login screen (email and password). Route: /login */
 export default function LoginPage() {
+  const location = useLocation();
+
   return (
     <main className="flex min-h-screen justify-center bg-white px-6 py-10">
       <div className="flex w-full max-w-sm flex-col gap-8">
@@ -20,7 +22,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-slate-500">
           No tens compte?{" "}
-          <Link to="/register" className="font-semibold text-primary">
+          <Link to="/register" state={location.state} className="font-semibold text-primary">
             Registra't
           </Link>
         </p>

@@ -4,28 +4,34 @@ import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import BottomNav from "../../../components/layout/BottomNav";
 import { PlusIcon } from "../../../components/ui/icons";
+import HomeBudgetSummary from "../../budgets/components/HomeBudgetSummary";
 import NetWorthList from "../../net-worth/components/NetWorthList";
+import NetWorthSummaryCard from "../../net-worth/components/NetWorthSummaryCard";
 import { formatMonthLabel, getMonthBounds } from "../../transactions/monthBounds";
+import UpcomingPaymentsList from "../../transactions/components/UpcomingPaymentsList";
 import { selectRecentTransactions } from "../../transactions/selectRecentTransactions";
-import BalanceCard from "../components/BalanceCard";
+import { getUpcomingRange } from "../../transactions/upcomingPayments";
 import HomeHeader from "../components/HomeHeader";
 import HomeSection from "../components/HomeSection";
 import MonthlySavingsCard from "../components/MonthlySavingsCard";
 import SessionLoading from "../components/SessionLoading";
 import TransactionList from "../components/TransactionList";
-import { SAMPLE_ACCOUNTS, SAMPLE_TOTAL_BALANCE_CENTS } from "../homeSampleData";
 
 /**
- * Main screen. Monthly savings (US2.4), recent movements (US2.3) and assets /
- * debts (US3.2) come from Convex; the total balance is still sample data for now.
+ * Main screen. Net worth and liquidity (US3.3), monthly savings (US2.4),
+ * upcoming recurring payments (US2.5), recent movements (US2.3),
+ * assets / debts (US3.2) and budgets (US3.1) come from Convex.
  */
 export default function HomePage() {
   const user = useQuery(api.users.currentUser);
   const transactions = useQuery(api.transactions.list, {});
   const netWorth = useQuery(api.netWorth.list);
+  const netWorthSummary = useQuery(api.netWorth.summary);
   const [now] = useState(() => Date.now());
   const monthBounds = getMonthBounds(now);
   const savings = useQuery(api.transactions.monthlySavings, monthBounds);
+  const upcomingPayments = useQuery(api.recurring.upcomingPayments, getUpcomingRange(now));
+  const budgets = useQuery(api.budgets.list, monthBounds);
 
   if (!user) {
     return <SessionLoading />;
@@ -35,10 +41,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-50">
       <main className="mx-auto flex max-w-md flex-col gap-6 px-5 pt-8 pb-28">
         <HomeHeader name={user.name} />
-        <BalanceCard
-          totalCents={SAMPLE_TOTAL_BALANCE_CENTS}
-          accountCount={SAMPLE_ACCOUNTS.length}
-        />
+        <NetWorthSummaryCard summary={netWorthSummary} />
         {savings === undefined ? (
           <section className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white px-5 py-4">
             <h2 className="text-sm text-slate-500">Estalvi del mes</h2>
@@ -51,6 +54,9 @@ export default function HomePage() {
             monthLabel={formatMonthLabel(now)}
           />
         )}
+        <HomeSection title="Pròxims pagaments" action={{ label: "Veure'ls tots", disabled: true }}>
+          <UpcomingPaymentsList payments={upcomingPayments} nowMs={now} />
+        </HomeSection>
         <Link
           to="/transactions/new"
           className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
@@ -74,6 +80,9 @@ export default function HomePage() {
           <PlusIcon className="size-4" />
           Afegir un actiu o un deute
         </Link>
+        <HomeSection title="Pressupostos" action={{ label: "Veure'ls tots", to: "/budgets" }}>
+          <HomeBudgetSummary budgets={budgets} />
+        </HomeSection>
         <HomeSection
           title="Últims moviments"
           action={{ label: "Veure'ls tots", to: "/transactions" }}

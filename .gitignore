@@ -35,3 +35,10 @@ dist-ssr
 # Cloudflare
 .wrangler/
 dist/
+
+# Test coverage (npm run test:coverage)
+coverage/
+
+# Playwright (npm run test:e2e)
+playwright-report/
+test-results/

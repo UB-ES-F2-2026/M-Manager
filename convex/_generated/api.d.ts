@@ -9,14 +9,27 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as budgets from "../budgets.js";
+import type * as crons from "../crons.js";
+import type * as groups from "../groups.js";
 import type * as http from "../http.js";
 import type * as lib_assetTypes from "../lib/assetTypes.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_balances from "../lib/balances.js";
+import type * as lib_budgetCategories from "../lib/budgetCategories.js";
 import type * as lib_dateRange from "../lib/dateRange.js";
+import type * as lib_groupCodes from "../lib/groupCodes.js";
+import type * as lib_groupRoles from "../lib/groupRoles.js";
 import type * as lib_ownership from "../lib/ownership.js";
+import type * as lib_recurrenceFrequencies from "../lib/recurrenceFrequencies.js";
+import type * as lib_recurringOccurrences from "../lib/recurringOccurrences.js";
+import type * as lib_recurringRules from "../lib/recurringRules.js";
+import type * as lib_splitExpense from "../lib/splitExpense.js";
+import type * as lib_splitModes from "../lib/splitModes.js";
 import type * as lib_transactionCategories from "../lib/transactionCategories.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as netWorth from "../netWorth.js";
+import type * as recurring from "../recurring.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
@@ -28,14 +41,27 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  budgets: typeof budgets;
+  crons: typeof crons;
+  groups: typeof groups;
   http: typeof http;
   "lib/assetTypes": typeof lib_assetTypes;
   "lib/auth": typeof lib_auth;
+  "lib/balances": typeof lib_balances;
+  "lib/budgetCategories": typeof lib_budgetCategories;
   "lib/dateRange": typeof lib_dateRange;
+  "lib/groupCodes": typeof lib_groupCodes;
+  "lib/groupRoles": typeof lib_groupRoles;
   "lib/ownership": typeof lib_ownership;
+  "lib/recurrenceFrequencies": typeof lib_recurrenceFrequencies;
+  "lib/recurringOccurrences": typeof lib_recurringOccurrences;
+  "lib/recurringRules": typeof lib_recurringRules;
+  "lib/splitExpense": typeof lib_splitExpense;
+  "lib/splitModes": typeof lib_splitModes;
   "lib/transactionCategories": typeof lib_transactionCategories;
   "lib/validation": typeof lib_validation;
   netWorth: typeof netWorth;
+  recurring: typeof recurring;
   transactions: typeof transactions;
   users: typeof users;
 }>;

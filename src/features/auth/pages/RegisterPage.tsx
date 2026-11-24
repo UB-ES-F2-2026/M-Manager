@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import FormAlert from "../../../components/ui/FormAlert";
 import PasswordField from "../../../components/ui/PasswordField";
@@ -11,6 +11,7 @@ import { MAX_NAME_LENGTH, useRegisterForm } from "../hooks/useRegisterForm";
 export default function RegisterPage() {
   const { fields, errors, isSubmitting, setField, handleSubmit } = useRegisterForm();
   const { fieldErrors, alert } = errors;
+  const location = useLocation();
 
   return (
     <main className="flex min-h-screen justify-center bg-white px-6 py-10">
@@ -66,7 +67,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-slate-500">
           Ja tens compte?{" "}
-          <Link to="/login" className="font-semibold text-primary">
+          <Link to="/login" state={location.state} className="font-semibold text-primary">
             Inicia la sessió
           </Link>
         </p>
